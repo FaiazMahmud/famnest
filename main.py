@@ -20,7 +20,7 @@ app.add_middleware(
 
 
 # MongoDB connection string (replace with your MongoDB Atlas credentials)
-MONGO_URI = os.getenv("mongodb+srv://faiazmahmudifti:hello12345@cluster0.2yjx4.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0")
+MONGO_URI = os.getenv("MONGO_URI")
 client = MongoClient(MONGO_URI)
 db = client.get_database('FamNest')  # Replace with your database name
 collection1 = db.get_collection('email-password')  # Replace with your collection name
