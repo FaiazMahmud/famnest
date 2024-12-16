@@ -5,8 +5,10 @@ from bson import ObjectId
 from datetime import datetime, timedelta
 from jose import jwt, JWTError
 import os
-
 from fastapi.middleware.cors import CORSMiddleware
+
+# Initialize FastAPI app
+app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
@@ -23,8 +25,6 @@ client = MongoClient(MONGO_URI)
 db = client.get_database('FamNest')  # Replace with your database name
 collection1 = db.get_collection('email-password')  # Replace with your collection name
 
-# Initialize FastAPI app
-app = FastAPI()
 
 # Define the Pydantic model to handle incoming data
 class InputText(BaseModel):
