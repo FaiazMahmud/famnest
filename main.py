@@ -116,4 +116,30 @@ async def check_one_group_criteria(info : email):
     collection = db.get_collection("Users Logged in Successfully with a Group")
     existing_entry = collection.find_one({"email":email})
     return {"exists": bool(existing_entry)}
-   
+
+# store all group names and passwords
+class allGroups(BaseModel):
+    name : str
+    password : str
+
+@app.post("/all-groups-record/")
+async def all_groups(info: allGroups):
+    g_name = info.name
+    g_password = info.password
+    collection = db.get_collection('All Groups Records')
+    collection.insert_one({"group name":g_name, "group password": g_password})
+
+# for joining group
+class g_password(BaseModel):
+    g_password : str
+
+@app.post("/check-group_password/")
+async def check_one_group_criteria(info : g_password):
+    g_password = info.g_password
+    collection = db.get_collection("All Groups Records")
+    existing_entry = collection.find_one({"group password":g_password})
+    if existing_entry:
+        group_name = existing_entry.get("group name")  # Replace "group name" with the actual field name
+        return {"message": group_name, "status": "success"}
+    else:
+        return {"message": "", "status": "not found"}  # Return error if already exists
