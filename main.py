@@ -82,18 +82,22 @@ async def check_input(info : login):
 class groupCreate(BaseModel):
    email : str
    new_group : str
+   group_code : str
 
 @app.post("/group-create/")
 async def group_create(info: groupCreate):
     email = info.email
     new_group = info.new_group
+    group_code = info.group_code
+
     User = db.get_collection("Registerd_Users_Only")
-    User_Info = User.find_one({"email": email})  # Find user by email
+    User_Info = User.find_one({"email": email}) #finding user using email
 
     if not User_Info:
         return {"error": "User not found with the given email"}
-
-    # Perform your operations
+      
+    new_group = {"group_name": new_group, "group_code": group_code}
+    # Performing operations operations
     name = User_Info.get("name")
     password = User_Info.get("password")
     collection = db.get_collection("Users Logged in Successfully with a Group")
@@ -105,6 +109,7 @@ async def group_create(info: groupCreate):
         },
         upsert=True
     )
+   
 
 # for checking whether to show Join Create Group page or not
 # called from login page
