@@ -138,7 +138,7 @@ async def all_groups(info: allGroups):
 class g_password(BaseModel):
     g_password : str
 
-@app.post("/check-group_password/")
+@app.post("/check-group-password/")
 async def check_one_group_criteria(info : g_password):
     g_password = info.g_password
     collection = db.get_collection("All Groups Records")
