@@ -98,7 +98,7 @@ async def group_create(info: groupCreate):
     password = User_Info.get("password")
     collection = db.get_collection("Users Logged in Successfully with a Group")
     collection.update_one(
-        {"name": email}, 
+        {"email": email}, 
         {
             "$set": {"name": name, "password": password, "AtLeastOneGroup": True},
             "$push": {"groups": new_group}
