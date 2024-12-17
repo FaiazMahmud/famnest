@@ -84,27 +84,27 @@ class groupCreate(BaseModel):
    new_group : str
 
 @app.post("/group-create/")
-async def group_create(info : groupCreate):
-   email = info.email
-   new_group = info.new_group
-   User = db.get_collection("Registerd_Users_Only")
-   User_Info = User.find_one({"email": email})  # Finding user by email
-    
-   if not User_Info:
+async def group_create(info: groupCreate):
+    email = info.email
+    new_group = info.new_group
+    User = db.get_collection("Registerd_Users_Only")
+    User_Info = User.find_one({"email": email})  # Find user by email
+
+    if not User_Info:
         return {"error": "User not found with the given email"}
-    
-   # Extracting the required details from the User_INFO document
-   name = User_Info.get("name")
-   password = User_Info.get("password")
-   collection = db.get_collection("Users Logged in Successfully with a Group")
-   collection.update_one(
-        {"name" : name}, # Storing the name of user 
-        {"email": email}, 
-        {"password":password}, # Match the document by email
-        {"AtLeastOneGroup" : True},
-        {"$push": {"groups": {"$each": new_group}}},  # Add new groups to the array
-        upsert=True  # Create the document if it doesn't exist
-   )
+
+    # Perform your operations
+    name = User_Info.get("name")
+    password = User_Info.get("password")
+    collection = db.get_collection("Users Logged in Successfully with a Group")
+    collection.update_one(
+        {"name": email}, 
+        {
+            "$set": {"name": name, "password": password, "AtLeastOneGroup": True},
+            "$push": {"groups": new_group}
+        },
+        upsert=True
+    )
 
 # for checking whether to show Join Create Group page or not
 # called from login page
