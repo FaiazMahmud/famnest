@@ -147,4 +147,4 @@ async def check_one_group_criteria(info : g_password):
         group_name = existing_entry.get("group name")  # Replace "group name" with the actual field name
         return {"message": group_name, "status": "success"}
     else:
-        return {"message": "", "status": "not found"}  # Return error if already exists
+        return {"message": "-1", "status": "not found"}  # Return error if already exists
