@@ -135,11 +135,11 @@ async def all_groups(info: allGroups):
     collection.insert_one({"group name":g_name, "group password": g_password})
 
 # for joining group
-class g_password(BaseModel):
+class grp_password(BaseModel):
     g_password : str
 
 @app.post("/check-group-password/")
-async def check_one_group_criteria(info : g_password):
+async def isgroupExists(info : grp_password):
     g_password = info.g_password
     collection = db.get_collection("All Groups Records")
     existing_entry = collection.find_one({"group password":g_password})
