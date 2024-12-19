@@ -144,7 +144,7 @@ async def isgroupExists(info : grp_password):
     collection = db.get_collection("All Groups Records")
     existing_entry = collection.find_one({"group password":g_password})
     if existing_entry:
-        group_name = existing_entry.get("group name")  # Replace "group name" with the actual field name
+        group_name = existing_entry.get("group name") 
         return {"message": group_name, "status": "success"}
     else:
         return {"message": "-1", "status": "not found"}  # Return error if already exists
@@ -154,11 +154,12 @@ async def isgroupExists(info : grp_password):
 async def getName(info : email):
     email = info.email
     collection = db.get_collection("Users Logged in Successfully with a Group")
-    existing_entry = collection.find_one({"email":email})
-    if not existing_entry:
-        return {"error": "User not found"}
-    name = existing_entry.get("name")  
-    return {"message": name, "status": "success"}
+    existing_entry = collection.find_one({"email": email})
+    if existing_entry
+        name = existing_entry.get("name")  
+        return {"message": name, "status": "success"} 
+    else 
+        return {"message": "-1" , "status": "not found"}
 
 # for getting password
 @app.post("/get-password/")
@@ -166,10 +167,11 @@ async def getPassword(info : email):
     email = info.email
     collection = db.get_collection("Users Logged in Successfully with a Group")
     existing_entry = collection.find_one({"email":email})
-    if not existing_entry:
-        return {"error": "User not found"}
-    password = existing_entry.get("password")  
-    return {"message": password, "status": "success"}
+    if existing_entry
+        password = existing_entry.get("password")  
+        return {"message": password, "status": "success"} 
+    else 
+        return {"message": "-1" , "status": "not found"}}
 
 # for getting first group
 @app.post("/get-firstgroup/")
@@ -183,6 +185,6 @@ async def getFirstGroup(info : email):
     if not groups:
         return {"error": "No groups found for this user"}
     # Accessing the first group
-    first_group = groups[0].get("group name")
+    first_group = groups[0].get("group_name")
     return {"message":first_group , "status" : "success"}
    
