@@ -151,7 +151,7 @@ async def isgroupExists(info : grp_password):
 
 # for getting name
 @app.post("/get-name/")
-async def isgroupExists(info : email):
+async def getName(info : email):
     email = info.email
     collection = db.get_collection("Users Logged in Successfully with a Group")
     existing_entry = collection.find_one({"email":email})
@@ -160,9 +160,25 @@ async def isgroupExists(info : email):
 
 # for getting password
 @app.post("/get-password/")
-async def isgroupExists(info : email):
+async def getPassword(info : email):
     email = info.email
     collection = db.get_collection("Users Logged in Successfully with a Group")
     existing_entry = collection.find_one({"email":email})
     name = existing_entry.get("password")  
     return {"message": password, "status": "success"}
+
+# for getting first group
+@app.post("/get-firstgroup/")
+async def getFirstGroup(info : email):
+    email = info.email
+    collection = db.get_collection("Users Logged in Successfully with a Group")
+    existing_entry = collection.find_one({"email":email}) 
+       if not existing_entry:
+        return {"error": "User not found"}
+    groups = existing_entry.get("groups", [])
+    if not groups:
+        return {"error": "No groups found for this user"}
+    # Accessing the first group
+    first_group = groups[0].get("group name")
+    return {"message":first_group , "status" : "success"}
+   
