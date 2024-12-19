@@ -155,6 +155,8 @@ async def getName(info : email):
     email = info.email
     collection = db.get_collection("Users Logged in Successfully with a Group")
     existing_entry = collection.find_one({"email":email})
+    if not existing_entry:
+        return {"error": "User not found"}
     name = existing_entry.get("name")  
     return {"message": name, "status": "success"}
 
@@ -164,6 +166,8 @@ async def getPassword(info : email):
     email = info.email
     collection = db.get_collection("Users Logged in Successfully with a Group")
     existing_entry = collection.find_one({"email":email})
+    if not existing_entry:
+        return {"error": "User not found"}
     password = existing_entry.get("password")  
     return {"message": password, "status": "success"}
 
