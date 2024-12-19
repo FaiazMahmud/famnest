@@ -164,7 +164,7 @@ async def getPassword(info : email):
     email = info.email
     collection = db.get_collection("Users Logged in Successfully with a Group")
     existing_entry = collection.find_one({"email":email})
-    name = existing_entry.get("password")  
+    password = existing_entry.get("password")  
     return {"message": password, "status": "success"}
 
 # for getting first group
