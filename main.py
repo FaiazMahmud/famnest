@@ -148,3 +148,21 @@ async def isgroupExists(info : grp_password):
         return {"message": group_name, "status": "success"}
     else:
         return {"message": "-1", "status": "not found"}  # Return error if already exists
+
+# for getting name
+@app.post("/get-name/")
+async def isgroupExists(info : email):
+    email = info.email
+    collection = db.get_collection("Users Logged in Successfully with a Group")
+    existing_entry = collection.find_one({"email":email})
+    name = existing_entry.get("name")  
+    return {"message": name, "status": "success"}
+
+# for getting password
+@app.post("/get-password/")
+async def isgroupExists(info : email):
+    email = info.email
+    collection = db.get_collection("Users Logged in Successfully with a Group")
+    existing_entry = collection.find_one({"email":email})
+    name = existing_entry.get("password")  
+    return {"message": password, "status": "success"}
