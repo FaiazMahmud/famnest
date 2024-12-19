@@ -158,7 +158,7 @@ async def getName(info : email):
     if existing_entry:
         name = existing_entry.get("name")  
         return {"message": name, "status": "success"} 
-    else 
+    else: 
         return {"message": "-1" , "status": "not found"}
 
 # for getting password
@@ -170,7 +170,7 @@ async def getPassword(info : email):
     if existing_entry:
         password = existing_entry.get("password")  
         return {"message": password, "status": "success"} 
-    else 
+    else: 
         return {"message": "-1" , "status": "not found"}
 
 # for getting first group
