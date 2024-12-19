@@ -173,7 +173,7 @@ async def getFirstGroup(info : email):
     email = info.email
     collection = db.get_collection("Users Logged in Successfully with a Group")
     existing_entry = collection.find_one({"email":email}) 
-       if not existing_entry:
+    if not existing_entry:
         return {"error": "User not found"}
     groups = existing_entry.get("groups", [])
     if not groups:
