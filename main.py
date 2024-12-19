@@ -171,7 +171,7 @@ async def getPassword(info : email):
         password = existing_entry.get("password")  
         return {"message": password, "status": "success"} 
     else 
-        return {"message": "-1" , "status": "not found"}}
+        return {"message": "-1" , "status": "not found"}
 
 # for getting first group
 @app.post("/get-firstgroup/")
