@@ -27,9 +27,6 @@ db = client.get_database('FamNest')
 
 
 # Defining the Pydantic model to handle incoming data
-class InputText(BaseModel):
-    input_text: str
-
 
 # for user_registration
 # name , email , password , joinCreate(by default : false) class 
@@ -37,6 +34,33 @@ class register(BaseModel):
     name: str
     email: str
     password: str
+
+# for user_login
+# email , password class 
+class login(BaseModel):
+    email: str
+    password: str
+
+# for checking whether to show Join Create Group page or not
+# called from login page
+class email(BaseModel):
+    email : str
+
+# for joining group
+class grp_password(BaseModel):
+    g_password : str
+
+# for creation of groups (collection = logged in successfully , {name , email , AtLeastOneGroup , groups})
+# called from create join page
+class groupCreate(BaseModel):
+   email : str
+   new_group : str
+   group_code : str
+
+# store all group names and passwords
+class allGroups(BaseModel):
+    name : str
+    password : str
 
 # Endpoint
 @app.post("/save-input/")
@@ -57,11 +81,7 @@ async def save_input(info: register):
         collection.insert_one({"name":name, "email": email, "password":password , "Joined or Created any Group": isJoinCreate})
         return {"message": "Successfully Registered", "status": "success"}  # Success message if inserted
 
-# for user_login
-# email , password class 
-class login(BaseModel):
-    email: str
-    password: str
+
     
 @app.post("/check-input/")
 async def check_input(info : login):
@@ -77,12 +97,7 @@ async def check_input(info : login):
     else:
         return {"message": "Incorrect Email or Password", "status": "success"}  # Return error if already exists
 
-# for creation of groups (collection = logged in successfully , {name , email , AtLeastOneGroup , groups})
-# called from create join page
-class groupCreate(BaseModel):
-   email : str
-   new_group : str
-   group_code : str
+
 
 @app.post("/group-create/")
 async def group_create(info: groupCreate):
@@ -100,7 +115,7 @@ async def group_create(info: groupCreate):
     # Performing operations operations
     name = User_Info.get("name")
     password = User_Info.get("password")
-    collection = db.get_collection("Users Logged in Successfully with a Group")
+    collection = db.get_collection("Users")
     collection.update_one(
         {"email": email}, 
         {
@@ -108,24 +123,15 @@ async def group_create(info: groupCreate):
             "$push": {"groups": new_group}
         },
         upsert=True
-    )
-   
+    ) 
 
-# for checking whether to show Join Create Group page or not
-# called from login page
-class email(BaseModel):
-    email : str
 @app.post("/check-one-group-criteria/")
 async def check_one_group_criteria(info : email):
     email = info.email
-    collection = db.get_collection("Users Logged in Successfully with a Group")
+    collection = db.get_collection("Users")
     existing_entry = collection.find_one({"email":email})
     return {"exists": bool(existing_entry)}
 
-# store all group names and passwords
-class allGroups(BaseModel):
-    name : str
-    password : str
 
 @app.post("/all-groups-record/")
 async def all_groups(info: allGroups):
@@ -134,9 +140,6 @@ async def all_groups(info: allGroups):
     collection = db.get_collection('All Groups Records')
     collection.insert_one({"group name":g_name, "group password": g_password})
 
-# for joining group
-class grp_password(BaseModel):
-    g_password : str
 
 @app.post("/check-group-password/")
 async def isgroupExists(info : grp_password):
@@ -153,7 +156,7 @@ async def isgroupExists(info : grp_password):
 @app.post("/get-name/")
 async def getName(info : email):
     email = info.email
-    collection = db.get_collection("Users Logged in Successfully with a Group")
+    collection = db.get_collection("Users")
     existing_entry = collection.find_one({"email": email})
     if existing_entry:
         name = existing_entry.get("name")  
@@ -165,7 +168,7 @@ async def getName(info : email):
 @app.post("/get-password/")
 async def getPassword(info : email):
     email = info.email
-    collection = db.get_collection("Users Logged in Successfully with a Group")
+    collection = db.get_collection("Users")
     existing_entry = collection.find_one({"email":email})
     if existing_entry:
         password = existing_entry.get("password")  
@@ -177,7 +180,7 @@ async def getPassword(info : email):
 @app.post("/get-firstgroup/")
 async def getFirstGroup(info : email):
     email = info.email
-    collection = db.get_collection("Users Logged in Successfully with a Group")
+    collection = db.get_collection("Users")
     existing_entry = collection.find_one({"email":email}) 
     if not existing_entry:
         return {"error": "User not found"}
