@@ -35,7 +35,7 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 # JWT configuration
 SECRET_KEY = "your_secret_key"  # Replace with a strong secret key
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+ACCESS_TOKEN_EXPIRE_MINUTES = 1440
 
 # Helper Functions
 def hash_password(password: str) -> str:
@@ -167,21 +167,36 @@ async def find_group(info: GroupPasswordRequest):
 
 @app.post("/get-user-data/")
 async def get_user_data(info: EmailRequest):
+    # Access the 'Users' collection
     collection = db.get_collection("Users")
+    
+    # Fetch the user document by email
     user = await collection.find_one({"email": info.email})
-
+    
     if not user:
         raise HTTPException(status_code=404, detail="User not found.")
 
+    # Prepare groups data (remove `_id` and other unnecessary fields)
+    groups = [
+        {
+            "group_name": group.get("group_name", "Unknown"),
+            "group_code": group.get("group_code", ""),
+            "created_at": group.get("created_at").isoformat() if group.get("created_at") else None
+        }
+        for group in user.get("groups", [])
+    ]
+
+    # Return the formatted user data
     return {
         "name": user.get("name"),
         "email": user.get("email"),
-        "password": user.get("password"),
-        "groups": user.get("groups", []),
+        "password": user.get("password"),  # This may not need to be sent to the frontend
+        "groups": groups,
         "login_status": user.get("login_status", False),
-        "created_at": user.get("created_at"),
-        
+        "created_at": user.get("created_at").isoformat() if user.get("created_at") else None,
+        "last_login": user.get("last_login").isoformat() if user.get("last_login") else None,
     }
+
 
 @app.post("/forgot-password/")
 async def forgot_password(info: ResetPasswordRequest):
