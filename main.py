@@ -1,15 +1,18 @@
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel, EmailStr
-from pymongo import MongoClient
-from bson import ObjectId
+from fastapi import FastAPI, HTTPException, Depends
+from pydantic import BaseModel
+from motor.motor_asyncio import AsyncIOMotorClient
+from passlib.context import CryptContext
 from datetime import datetime, timedelta
 from jose import jwt, JWTError
 import os
 from fastapi.middleware.cors import CORSMiddleware
+import random
+import string
 
-# creating a FastAPI instance
+# Initialize FastAPI app
 app = FastAPI()
 
+# CORS middleware configuration
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # Replace "*" with specific domains in production
@@ -18,176 +21,202 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
-# MongoDB connection string (filling up with MongoDB Atlas credentials)
+# MongoDB connection
 MONGO_URI = os.getenv("MONGO_URI")
-client = MongoClient(MONGO_URI)
-db = client.get_database('FamNest')  
-# collection1 = db.get_collection('email-password') 
+if not MONGO_URI:
+    raise RuntimeError("MONGO_URI environment variable is not set.")
 
+client = AsyncIOMotorClient(MONGO_URI)
+db = client['FamNest']
 
-# Defining the Pydantic model to handle incoming data
+# Password hashing context
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-# for user_registration
-# name , email , password , joinCreate(by default : false) class 
-class register(BaseModel):
+# JWT configuration
+SECRET_KEY = "your_secret_key"  # Replace with a strong secret key
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
+
+# Helper Functions
+def hash_password(password: str) -> str:
+    return pwd_context.hash(password)
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    return pwd_context.verify(plain_password, hashed_password)
+
+def create_access_token(data: dict, expires_delta: timedelta = None):
+    to_encode = data.copy()
+    expire = datetime.utcnow() + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
+    to_encode.update({"exp": expire})
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
+# Pydantic Models
+class Register(BaseModel):
     name: str
     email: str
     password: str
 
-# for user_login
-# email , password class 
-class login(BaseModel):
+class Login(BaseModel):
     email: str
     password: str
 
-# for checking whether to show Join Create Group page or not
-# called from login page
-class email(BaseModel):
-    email : str
+class GroupCreate(BaseModel):
+    email: str
+    group_name: str
+    group_code: str
 
-# for joining group
-class grp_password(BaseModel):
-    g_password : str
+class EmailRequest(BaseModel):
+    email: str
 
-# for creation of groups (collection = logged in successfully , {name , email , AtLeastOneGroup , groups})
-# called from create join page
-class groupCreate(BaseModel):
-   email : str
-   new_group : str
-   group_code : str
+class ResetPasswordRequest(BaseModel):
+    email: str
 
-# store all group names and passwords
-class allGroups(BaseModel):
-    name : str
-    password : str
+class UpdatePassword(BaseModel):
+    email: str
+    new_password: str
 
-# Endpoint
-@app.post("/save-input/")
-async def save_input(info: register):
-    name = info.name
-    email = info.email
-    password = info.password
-    isJoinCreate = False
+class GroupPasswordRequest(BaseModel):
+    group_code: str
 
-    collection = db.get_collection('Registerd_Users_Only')
-    # Check if the input text already exists in the MongoDB collection
-    existing_entry = collection.find_one({"email": email})
-
-    if existing_entry:
-        return {"message": "This Email is Already Taken", "status": "error"}  # Return error if already exists
-    else:
-        # Insert the new input text into the database
-        collection.insert_one({"name":name, "email": email, "password":password , "Joined or Created any Group": isJoinCreate})
-        return {"message": "Successfully Registered", "status": "success"}  # Success message if inserted
-
-
-    
-@app.post("/check-input/")
-async def check_input(info : login):
-    email = info.email
-    password = info.password
- 
-    collection = db.get_collection('Registerd_Users_Only')
-    # Check if the input text already exists in the MongoDB collection
-    existing_entry = collection.find_one({"email": email, "password":password})
-
-    if existing_entry:
-        return {"message": "Login Successful", "status": "success"}  # Success message if inserted
-    else:
-        return {"message": "Incorrect Email or Password", "status": "success"}  # Return error if already exists
-
-
-
-@app.post("/group-create/")
-async def group_create(info: groupCreate):
-    email = info.email
-    new_group = info.new_group
-    group_code = info.group_code
-
-    User = db.get_collection("Registerd_Users_Only")
-    User_Info = User.find_one({"email": email}) #finding user using email
-
-    if not User_Info:
-        return {"error": "User not found with the given email"}
-      
-    new_group = {"group_name": new_group, "group_code": group_code}
-    # Performing operations operations
-    name = User_Info.get("name")
-    password = User_Info.get("password")
+# Endpoints
+@app.post("/register/")
+async def register_user(info: Register):
     collection = db.get_collection("Users")
-    collection.update_one(
-        {"email": email}, 
-        {
-            "$set": {"name": name, "password": password, "AtLeastOneGroup": True},
-            "$push": {"groups": new_group}
-        },
-        upsert=True
-    ) 
+    existing_user = await collection.find_one({"email": info.email})
 
-@app.post("/check-one-group-criteria/")
-async def check_one_group_criteria(info : email):
-    email = info.email
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Email is already registered.")
+
+    hashed_password = hash_password(info.password)
+    await collection.insert_one({
+        "name": info.name,
+        "email": info.email,
+        "password": hashed_password,
+        "groups": [],
+        "login_status": False,
+        "created_at": datetime.utcnow()
+    })
+    return {"message": "User registered successfully."}
+
+@app.post("/login/")
+async def login_user(info: Login):
     collection = db.get_collection("Users")
-    existing_entry = collection.find_one({"email":email})
-    return {"exists": bool(existing_entry)}
+    user = await collection.find_one({"email": info.email})
 
+    if not user or not verify_password(info.password, user["password"]):
+        raise HTTPException(status_code=401, detail="Invalid email or password.")
 
-@app.post("/all-groups-record/")
-async def all_groups(info: allGroups):
-    g_name = info.name
-    g_password = info.password
-    collection = db.get_collection('All Groups Records')
-    collection.insert_one({"group name":g_name, "group password": g_password})
+    await collection.update_one(
+        {"email": info.email},
+        {"$set": {"login_status": True, "last_login": datetime.utcnow()}}
+    )
 
+    access_token = create_access_token({"sub": user["email"]})
+    return {"access_token": access_token, "token_type": "bearer"}
 
-@app.post("/check-group-password/")
-async def isgroupExists(info : grp_password):
-    g_password = info.g_password
-    collection = db.get_collection("All Groups Records")
-    existing_entry = collection.find_one({"group password":g_password})
-    if existing_entry:
-        group_name = existing_entry.get("group name") 
-        return {"message": group_name, "status": "success"}
-    else:
-        return {"message": "-1", "status": "not found"}  # Return error if already exists
-
-# for getting name
-@app.post("/get-name/")
-async def getName(info : email):
-    email = info.email
+@app.post("/logout/")
+async def logout_user(info: EmailRequest):
     collection = db.get_collection("Users")
-    existing_entry = collection.find_one({"email": email})
-    if existing_entry:
-        name = existing_entry.get("name")  
-        return {"message": name, "status": "success"} 
-    else: 
-        return {"message": "-1" , "status": "not found"}
+    user = await collection.find_one({"email": info.email})
 
-# for getting password
-@app.post("/get-password/")
-async def getPassword(info : email):
-    email = info.email
-    collection = db.get_collection("Users")
-    existing_entry = collection.find_one({"email":email})
-    if existing_entry:
-        password = existing_entry.get("password")  
-        return {"message": password, "status": "success"} 
-    else: 
-        return {"message": "-1" , "status": "not found"}
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found.")
 
-# for getting first group
-@app.post("/get-firstgroup/")
-async def getFirstGroup(info : email):
-    email = info.email
+    await collection.update_one(
+        {"email": info.email},
+        {"$set": {"login_status": False}}
+    )
+
+    return {"message": "User logged out successfully."}
+
+@app.post("/create-group/")
+async def create_group(info: GroupCreate):
+    group_collection = db.get_collection("Groups")
+    user_collection = db.get_collection("Users")
+
+    existing_group = await group_collection.find_one({"group_code": info.group_code})
+    if existing_group:
+        raise HTTPException(status_code=400, detail="Group code already exists.")
+
+    group_data = {
+        "group_name": info.group_name,
+        "group_code": info.group_code,
+        "created_at": datetime.utcnow()
+    }
+    await group_collection.insert_one(group_data)
+
+    user = await user_collection.find_one({"email": info.email})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found.")
+
+    await user_collection.update_one(
+        {"email": info.email},
+        {"$push": {"groups": group_data}}
+    )
+
+    return {"message": "Group created successfully.", "group": group_data}
+
+@app.post("/find-group/")
+async def find_group(info: GroupPasswordRequest):
+    group_collection = db.get_collection("Groups")
+    group = await group_collection.find_one({"group_code": info.group_code})
+
+    if group:
+        return {"group_name": group["group_name"], "group_code": group["group_code"]}
+    raise HTTPException(status_code=404, detail="Group not found.")
+
+@app.post("/get-user-data/")
+async def get_user_data(info: EmailRequest):
     collection = db.get_collection("Users")
-    existing_entry = collection.find_one({"email":email}) 
-    if not existing_entry:
-        return {"error": "User not found"}
-    groups = existing_entry.get("groups", [])
-    if not groups:
-        return {"error": "No groups found for this user"}
-    # Accessing the first group
-    first_group = groups[0].get("group_name")
-    return {"message":first_group , "status" : "success"}
-   
+    user = await collection.find_one({"email": info.email})
+
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found.")
+
+    return {
+        "name": user.get("name"),
+        "email": user.get("email"),
+        "password": user.get("password"),
+        "groups": user.get("groups", []),
+        "login_status": user.get("login_status", False),
+        "created_at": user.get("created_at"),
+        
+    }
+
+@app.post("/forgot-password/")
+async def forgot_password(info: ResetPasswordRequest):
+    collection = db.get_collection("Users")
+    user = await collection.find_one({"email": info.email})
+
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found.")
+
+    reset_code = ''.join(random.choices(string.ascii_letters + string.digits, k=6))
+    await collection.update_one(
+        {"email": info.email},
+        {"$set": {"reset_code": reset_code, "reset_code_expiry": datetime.utcnow() + timedelta(minutes=10)}}
+    )
+
+    return {"message": "Password reset code sent.", "reset_code": reset_code}
+
+@app.post("/reset-password/")
+async def reset_password(info: UpdatePassword):
+    collection = db.get_collection("Users")
+    user = await collection.find_one({"email": info.email})
+
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found.")
+
+    hashed_password = hash_password(info.new_password)
+    await collection.update_one(
+        {"email": info.email},
+        {"$set": {"password": hashed_password}, "$unset": {"reset_code": "", "reset_code_expiry": ""}}
+    )
+
+    return {"message": "Password reset successfully."}
+
+@app.get("/all-users/")
+async def get_all_users():
+    collection = db.get_collection("Users")
+    users = await collection.find({}).to_list(length=100)
+    return [{"name": user.get("name"), "email": user.get("email"), "login_status": user.get("login_status")} for user in users]
