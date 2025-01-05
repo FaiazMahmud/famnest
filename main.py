@@ -129,36 +129,54 @@ async def logout_user(info: EmailRequest):
 
     return {"message": "User logged out successfully."}
 
+# Helper function to serialize MongoDB documents (excluding _id)
+def serialize_doc(doc):
+    if "created_at" in doc:
+        doc["created_at"] = doc["created_at"].isoformat()  # Convert datetime to ISO format
+    return {key: value for key, value in doc.items() if key != "_id"}  # Exclude _id
+
 @app.post("/create-group/")
 async def create_group(info: GroupCreate):
     group_collection = db.get_collection("Groups")
     user_collection = db.get_collection("Users")
 
+    # Check if the group code already exists
     existing_group = await group_collection.find_one({"group_code": info.group_code})
     if existing_group:
         raise HTTPException(status_code=400, detail="Group code already exists.")
 
+    # Create the group data
     group_data = {
         "group_name": info.group_name,
         "group_code": info.group_code,
         "created_at": datetime.utcnow()
     }
+
+    # Insert the group into the Groups collection
     await group_collection.insert_one(group_data)
 
+    # Check if the user exists
     user = await user_collection.find_one({"email": info.email})
     if not user:
         raise HTTPException(status_code=404, detail="User not found.")
 
+    # Update the user's groups
     await user_collection.update_one(
         {"email": info.email},
-        {"$push": {"groups": group_data}}
+        {"$push": {"groups": serialize_doc(group_data)}}  # Serialize and exclude _id
     )
 
+    # Serialize group data for the response
+    serialized_group_data = serialize_doc(group_data)
+
+    # Return a successful response
     return {
-        "success": True,  # Added success key
+        "success": True,
         "message": "Group created successfully.",
-        "group": group_data
+        "group": serialized_group_data
     }
+}
+
 
 
 @app.post("/find-group/")
