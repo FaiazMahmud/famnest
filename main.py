@@ -175,7 +175,7 @@ async def create_group(info: GroupCreate):
         "message": "Group created successfully.",
         "group": serialized_group_data
     }
-}
+
 
 
 
