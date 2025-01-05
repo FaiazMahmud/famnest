@@ -192,6 +192,8 @@ async def find_group(info: GroupPasswordRequest):
         return {"group_name": group["group_name"], "group_code": group["group_code"]}
     raise HTTPException(status_code=404, detail="Group not found.")
 
+from datetime import datetime
+
 @app.post("/get-user-data/")
 async def get_user_data(info: EmailRequest):
     # Access the 'Users' collection
@@ -203,12 +205,16 @@ async def get_user_data(info: EmailRequest):
     if not user:
         raise HTTPException(status_code=404, detail="User not found.")
 
-    # Prepare groups data (remove `_id` and other unnecessary fields)
+    # Prepare groups data (handle different formats of `created_at`)
     groups = [
         {
             "group_name": group.get("group_name", "Unknown"),
             "group_code": group.get("group_code", ""),
-            "created_at": group.get("created_at").isoformat() if group.get("created_at") else None
+            "created_at": (
+                group.get("created_at").isoformat() 
+                if isinstance(group.get("created_at"), datetime) 
+                else group.get("created_at")  # Return as is if already a string
+            )
         }
         for group in user.get("groups", [])
     ]
@@ -220,8 +226,16 @@ async def get_user_data(info: EmailRequest):
         "password": user.get("password"),  # This may not need to be sent to the frontend
         "groups": groups,
         "login_status": user.get("login_status", False),
-        "created_at": user.get("created_at").isoformat() if user.get("created_at") else None,
-        "last_login": user.get("last_login").isoformat() if user.get("last_login") else None,
+        "created_at": (
+            user.get("created_at").isoformat() 
+            if isinstance(user.get("created_at"), datetime) 
+            else user.get("created_at")  # Return as is if already a string
+        ),
+        "last_login": (
+            user.get("last_login").isoformat() 
+            if isinstance(user.get("last_login"), datetime) 
+            else user.get("last_login")  # Return as is if already a string
+        ),
     }
 
 
