@@ -154,7 +154,12 @@ async def create_group(info: GroupCreate):
         {"$push": {"groups": group_data}}
     )
 
-    return {"message": "Group created successfully.", "group": group_data}
+    return {
+        "success": True,  # Added success key
+        "message": "Group created successfully.",
+        "group": group_data
+    }
+
 
 @app.post("/find-group/")
 async def find_group(info: GroupPasswordRequest):
