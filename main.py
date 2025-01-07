@@ -78,6 +78,11 @@ class UpdatePassword(BaseModel):
 class GroupPasswordRequest(BaseModel):
     group_code: str
 
+class EditUserProfile(BaseModel):
+    new_name: str
+    new_email: str
+    old_email: str
+
 # Endpoints
 @app.post("/register/")
 async def register_user(info: Register):
@@ -276,3 +281,27 @@ async def get_all_users():
     collection = db.get_collection("Users")
     users = await collection.find({}).to_list(length=100)
     return [{"name": user.get("name"), "email": user.get("email"), "login_status": user.get("login_status")} for user in users]
+
+@app.post("/edit-profile/")
+async def edit_user_profile(info: EditUserProfile):
+    collection = db.get_collection("Users")
+    user_document = collection.find_one({"email": info.old_email})
+    
+    if not user_document:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Update the username and email fields
+    update_result = collection.update_one(
+        {"email": info.old_email},  # Query to find the document
+        {
+            "$set": {
+                "name": info.new_name,
+                "email": info.new_email,
+            }
+        }
+    )
+
+    if update_result.modified_count == 0:
+        raise HTTPException(status_code=400, detail="No changes made to the user profile")
+
+    return {"message": "Your Profile is Updated Successfully"}
