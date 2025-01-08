@@ -352,7 +352,7 @@ async def get_profile_picture(email: str):
     collection = db.get_collection("Profile Pictures")
     # Check if the user exists in the "Profile Pictures" collection
     user = await collection.find_one({"email": email})
-    fetch the profile_picture_url
+    # fetch the profile_picture_url
     profile_picture_url = user.get("profile_picture_url")
     return {"message": "Profile picture found.", "profile_picture_url": profile_picture_url}
     
