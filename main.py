@@ -336,6 +336,7 @@ async def edit_user_profile(info: EditUserProfile):
 
 @app.post("/upload-profile-picture/")
 async def upload_profile_picture(email: str, file: UploadFile = File(...)):
+    print("gdgas")
     users_collection = db.get_collection("Users")
     collection = db.get_collection("Profile Pictures")
     
