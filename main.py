@@ -10,6 +10,7 @@ import random
 import string
 import cloudinary
 import cloudinary.uploader
+import uuid
 
 # Initialize FastAPI app
 app = FastAPI()
