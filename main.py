@@ -278,13 +278,16 @@ async def reset_password(info: UpdatePassword):
     if user.get("reset_code_expiry") < datetime.utcnow():
         raise HTTPException(status_code=400, detail="Reset code has expired.")
 
+    # Hash the new password
+    hashed_password = hash_password(info.new_password)
+
     # Update Password
-    hashed_password = info.new_password  # Add actual hashing for production
     await collection.update_one(
         {"email": info.email},
         {"$set": {"password": hashed_password}, "$unset": {"reset_code": "", "reset_code_expiry": ""}}
     )
     return {"message": "Password reset successfully."}
+
 
 
 
