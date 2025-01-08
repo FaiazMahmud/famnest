@@ -300,7 +300,7 @@ async def get_all_users():
 @app.post("/edit-profile/")
 async def edit_user_profile(info: EditUserProfile):
     collection = db.get_collection("Users")
-    existing_user = await collection.find_one({"email": info.old_email})
+    existing_user = await collection.find_one({"email": info.new_email})
     
     if existing_user:
         raise HTTPException(status_code=400, detail="This Email is Already Taken.")
