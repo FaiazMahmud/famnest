@@ -101,7 +101,11 @@ class EditUserProfile(BaseModel):
     new_name: str
     new_email: str
     old_email: str
-
+    
+class AddProfilePicture(BaseModel):
+    email : str
+    profile_picture_url : str
+    
 # Endpoints
 @app.post("/register/")
 async def register_user(info: Register):
@@ -332,8 +336,16 @@ async def edit_user_profile(info: EditUserProfile):
             }
         }
     )
-
     return {"message": "Your Profile is Updated Successfully"}
+
+@app.post("/add-profile-picture/")
+async def register_user(info: AddProfilePicture):
+    collection = db.get_collection("Profile Pictures")
+    await collection.insert_one({
+        "name": info.email,
+        "profile_picture_url": info.profile_picture_url
+    })
+    return {"message": "Default Profile Picture Added."}
 
 @app.post("/upload-profile-picture/")
 async def upload_profile_picture(email: str = Form(...), file: UploadFile = File(...)):
