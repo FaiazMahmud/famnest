@@ -360,7 +360,7 @@ async def get_profile_picture(email: str):
 async def upload_profile_picture(email: str = Form(...), file: UploadFile = File(...)):
     print("gdgas")
     collection = db.get_collection("Profile Pictures")
-    user = await collection.find_one({"email": info.email})
+    user = await collection.find_one({"email": email})
     # Check if the user exists
     try:
         # Validate the file type (ensure it's an image)
