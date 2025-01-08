@@ -337,14 +337,8 @@ async def edit_user_profile(info: EditUserProfile):
 @app.post("/upload-profile-picture/")
 async def upload_profile_picture(email: str, file: UploadFile = File(...)):
     print("gdgas")
-    users_collection = db.get_collection("Users")
     collection = db.get_collection("Profile Pictures")
-    
     # Check if the user exists
-    user = await users_collection.find_one({"email": email})
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found.")
-    
     try:
         # Validate the file type (ensure it's an image)
         if not file.content_type.startswith('image'):
