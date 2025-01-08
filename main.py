@@ -347,10 +347,20 @@ async def register_user(info: AddProfilePicture):
     })
     return {"message": "Default Profile Picture Added."}
 
+@app.post("/get-profile-picture/")
+async def get_profile_picture(email: str):
+    collection = db.get_collection("Profile Pictures")
+    # Check if the user exists in the "Profile Pictures" collection
+    user = await collection.find_one({"email": email})
+    fetch the profile_picture_url
+    profile_picture_url = user.get("profile_picture_url")
+    return {"message": "Profile picture found.", "profile_picture_url": profile_picture_url}
+    
 @app.post("/upload-profile-picture/")
 async def upload_profile_picture(email: str = Form(...), file: UploadFile = File(...)):
     print("gdgas")
     collection = db.get_collection("Profile Pictures")
+    user = await collection.find_one({"email": info.email})
     # Check if the user exists
     try:
         # Validate the file type (ensure it's an image)
@@ -366,11 +376,10 @@ async def upload_profile_picture(email: str = Form(...), file: UploadFile = File
         profile_pic_url = result.get("url")
         
         # Update user's profile picture URL in MongoDB
-        await collection.update_one(
-            {"email": email},
-            {"$set": {"profile_picture": profile_pic_url}}
+        result = await collection.update_one(
+            {"email": email},  # Find the document with this email
+            {"$set": {"profile_picture_url": new_url}}  # Update the URL
         )
-        
         return {
             "message": "Profile picture uploaded successfully.",
             "profile_picture_url": profile_pic_url  # Optionally return the URL
