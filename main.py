@@ -8,6 +8,8 @@ import os
 from fastapi.middleware.cors import CORSMiddleware
 import random
 import string
+import cloudinary
+import cloudinary.uploader
 
 # Initialize FastAPI app
 app = FastAPI()
@@ -28,6 +30,20 @@ if not MONGO_URI:
 
 client = AsyncIOMotorClient(MONGO_URI)
 db = client['FamNest']
+
+# Cloudinary configuration
+CLOUDINARY_CLOUD_NAME = os.getenv("CLOUDINARY_CLOUD_NAME")
+CLOUDINARY_API_KEY = os.getenv("CLOUDINARY_API_KEY")
+CLOUDINARY_API_SECRET = os.getenv("CLOUDINARY_API_SECRET")
+
+if not all([CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET]):
+    raise RuntimeError("Cloudinary environment variables are not set.")
+
+cloudinary.config(
+    cloud_name=CLOUDINARY_CLOUD_NAME,
+    api_key=CLOUDINARY_API_KEY,
+    api_secret=CLOUDINARY_API_SECRET,
+)
 
 # Password hashing context
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -317,3 +333,38 @@ async def edit_user_profile(info: EditUserProfile):
     )
 
     return {"message": "Your Profile is Updated Successfully"}
+
+
+
+
+
+
+
+
+@app.post("/upload-profile-picture/")
+async def upload_profile_picture(email: str, file: UploadFile = File(...)):
+    users_collection = db.get_collection("Users")
+    
+    # Check if the user exists
+    user = await users_collection.find_one({"email": email})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found.")
+    
+    try:
+        # Upload the image to Cloudinary
+        result = cloudinary.uploader.upload(file.file, folder="profile_pictures")
+        profile_pic_url = result.get("url")
+        
+        # Update user's profile picture URL in MongoDB
+        await users_collection.update_one(
+            {"email": email},
+            {"$set": {"profile_picture": profile_pic_url}}
+        )
+        
+        return {
+            "success": True,
+            "message": "Profile picture uploaded successfully.",
+            "profile_picture_url": profile_pic_url,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to upload image: {str(e)}")
