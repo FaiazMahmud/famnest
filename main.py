@@ -334,22 +334,27 @@ async def edit_user_profile(info: EditUserProfile):
 
     return {"message": "Your Profile is Updated Successfully"}
 
-
-
-
-
 @app.post("/upload-profile-picture/")
 async def upload_profile_picture(email: str, file: UploadFile = File(...)):
     users_collection = db.get_collection("Users")
     collection = db.get_collection("Profile Pictures")
+    
     # Check if the user exists
     user = await users_collection.find_one({"email": email})
     if not user:
         raise HTTPException(status_code=404, detail="User not found.")
     
     try:
+        # Validate the file type (ensure it's an image)
+        if not file.content_type.startswith('image'):
+            raise HTTPException(status_code=400, detail="Invalid file type. Please upload an image.")
+        
+        # Generate a unique name for the file (use UUID or current timestamp)
+        file_extension = file.filename.split('.')[-1]
+        unique_filename = f"{uuid.uuid4()}.{file_extension}"
+        
         # Upload the image to Cloudinary
-        result = cloudinary.uploader.upload(file.file, folder="profile_pictures")
+        result = cloudinary.uploader.upload(file.file, folder="profile_pictures", public_id=unique_filename)
         profile_pic_url = result.get("url")
         
         # Update user's profile picture URL in MongoDB
@@ -360,4 +365,5 @@ async def upload_profile_picture(email: str, file: UploadFile = File(...)):
         
         return {
             "message": "Profile picture uploaded successfully.",
+            "profile_picture_url": profile_pic_url  # Optionally return the URL
         }
