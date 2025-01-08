@@ -300,10 +300,10 @@ async def get_all_users():
 @app.post("/edit-profile/")
 async def edit_user_profile(info: EditUserProfile):
     collection = db.get_collection("Users")
-    user_document = collection.find_one({"email": info.old_email})
+    existing_user = await collection.find_one({"email": info.old_email})
     
-    if not user_document:
-        raise HTTPException(status_code=404, detail="User not found")
+    if existing_user:
+        raise HTTPException(status_code=400, detail="This Email is Already Taken.")
 
     # Update the username and email fields
     update_result = collection.update_one(
@@ -315,8 +315,5 @@ async def edit_user_profile(info: EditUserProfile):
             }
         }
     )
-
-    if update_result.modified_count == 0:
-        raise HTTPException(status_code=400, detail="No changes made to the user profile")
 
     return {"message": "Your Profile is Updated Successfully"}
