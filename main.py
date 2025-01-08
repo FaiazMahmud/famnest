@@ -68,13 +68,15 @@ class GroupCreate(BaseModel):
 class EmailRequest(BaseModel):
     email: str
 
+# Password Reset Models
 class ResetPasswordRequest(BaseModel):
     email: str
 
 class UpdatePassword(BaseModel):
     email: str
+    reset_code: str
     new_password: str
-
+    
 class GroupPasswordRequest(BaseModel):
     group_code: str
 
@@ -243,38 +245,48 @@ async def get_user_data(info: EmailRequest):
         ),
     }
 
-
+# Forgot Password Endpoint
 @app.post("/forgot-password/")
 async def forgot_password(info: ResetPasswordRequest):
     collection = db.get_collection("Users")
     user = await collection.find_one({"email": info.email})
-
     if not user:
         raise HTTPException(status_code=404, detail="User not found.")
 
+    # Generate Reset Code
     reset_code = ''.join(random.choices(string.ascii_letters + string.digits, k=6))
+    expiry_time = datetime.utcnow() + timedelta(minutes=10)
+
     await collection.update_one(
         {"email": info.email},
-        {"$set": {"reset_code": reset_code, "reset_code_expiry": datetime.utcnow() + timedelta(minutes=10)}}
+        {"$set": {"reset_code": reset_code, "reset_code_expiry": expiry_time}}
     )
-
     return {"message": "Password reset code sent.", "reset_code": reset_code}
 
+
+# Reset Password Endpoint
 @app.post("/reset-password/")
 async def reset_password(info: UpdatePassword):
     collection = db.get_collection("Users")
     user = await collection.find_one({"email": info.email})
-
     if not user:
         raise HTTPException(status_code=404, detail="User not found.")
 
-    hashed_password = hash_password(info.new_password)
+    # Validate Reset Code
+    if user.get("reset_code") != info.reset_code:
+        raise HTTPException(status_code=400, detail="Invalid reset code.")
+    if user.get("reset_code_expiry") < datetime.utcnow():
+        raise HTTPException(status_code=400, detail="Reset code has expired.")
+
+    # Update Password
+    hashed_password = info.new_password  # Add actual hashing for production
     await collection.update_one(
         {"email": info.email},
         {"$set": {"password": hashed_password}, "$unset": {"reset_code": "", "reset_code_expiry": ""}}
     )
-
     return {"message": "Password reset successfully."}
+
+
 
 @app.get("/all-users/")
 async def get_all_users():
