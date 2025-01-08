@@ -341,7 +341,7 @@ async def edit_user_profile(info: EditUserProfile):
 @app.post("/upload-profile-picture/")
 async def upload_profile_picture(email: str, file: UploadFile = File(...)):
     users_collection = db.get_collection("Users")
-    
+    collection = db.get_collection("Profile Pictures")
     # Check if the user exists
     user = await users_collection.find_one({"email": email})
     if not user:
@@ -353,7 +353,7 @@ async def upload_profile_picture(email: str, file: UploadFile = File(...)):
         profile_pic_url = result.get("url")
         
         # Update user's profile picture URL in MongoDB
-        await users_collection.update_one(
+        await collection.update_one(
             {"email": email},
             {"$set": {"profile_picture": profile_pic_url}}
         )
