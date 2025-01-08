@@ -302,7 +302,7 @@ async def edit_user_profile(info: EditUserProfile):
     collection = db.get_collection("Users")
     existing_user = await collection.find_one({"email": info.new_email})
     
-    if existing_user:
+    if existing_user and info.new_email != info.old_email:
         raise HTTPException(status_code=400, detail="This Email is Already Taken.")
 
     # Update the username and email fields
