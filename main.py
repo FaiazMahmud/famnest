@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, UploadFile, File
 from pydantic import BaseModel
 from motor.motor_asyncio import AsyncIOMotorClient
 from passlib.context import CryptContext
@@ -333,9 +333,6 @@ async def edit_user_profile(info: EditUserProfile):
     )
 
     return {"message": "Your Profile is Updated Successfully"}
-
-
-
 
 
 
