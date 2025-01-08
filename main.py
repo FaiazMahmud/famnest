@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Depends, UploadFile, File
+from fastapi import FastAPI, HTTPException, Depends, UploadFile, File , Form
 from pydantic import BaseModel
 from motor.motor_asyncio import AsyncIOMotorClient
 from passlib.context import CryptContext
