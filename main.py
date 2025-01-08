@@ -367,3 +367,5 @@ async def upload_profile_picture(email: str, file: UploadFile = File(...)):
             "message": "Profile picture uploaded successfully.",
             "profile_picture_url": profile_pic_url  # Optionally return the URL
         }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to upload image: {str(e)}")
