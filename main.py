@@ -335,7 +335,7 @@ async def edit_user_profile(info: EditUserProfile):
     return {"message": "Your Profile is Updated Successfully"}
 
 @app.post("/upload-profile-picture/")
-async def upload_profile_picture(email: str, file: UploadFile = File(...)):
+async def upload_profile_picture(email: str = Form(...), file: UploadFile = File(...)):
     print("gdgas")
     collection = db.get_collection("Profile Pictures")
     # Check if the user exists
