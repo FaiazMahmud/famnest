@@ -338,31 +338,16 @@ async def edit_user_profile(info: EditUserProfile):
     )
     return {"message": "Your Profile is Updated Successfully"}
 
-@app.post("/add-profile-picture/")
-async def register_user(info: AddProfilePicture):
-    collection = db.get_collection("Profile Pictures")
-    await collection.insert_one({
-        "name": info.email,
-        "profile_picture_url": info.profile_picture_url
-    })
-    return {"message": "Default Profile Picture Added."}
-
-@app.post("/get-profile-picture/")
-async def get_profile_picture(email: str):
-    collection = db.get_collection("Profile Pictures")
-    # Check if the user exists in the "Profile Pictures" collection
-    user = await collection.find_one({"email": email})
-    # fetch the profile_picture_url
-    profile_picture_url = user.get("profile_picture_url")
-    return {"message": "Profile picture found.", "profile_picture_url": profile_picture_url}
-    
 @app.post("/upload-profile-picture/")
 async def upload_profile_picture(email: str = Form(...), file: UploadFile = File(...)):
-    print("gdgas")
     collection = db.get_collection("Profile Pictures")
-    user = await collection.find_one({"email": email})
-    # Check if the user exists
+    
     try:
+        # Check if the user exists (implement your user checking logic here)
+        user = await users_collection.find_one({"email": email})
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found.")
+        
         # Validate the file type (ensure it's an image)
         if not file.content_type.startswith('image'):
             raise HTTPException(status_code=400, detail="Invalid file type. Please upload an image.")
@@ -376,10 +361,11 @@ async def upload_profile_picture(email: str = Form(...), file: UploadFile = File
         profile_pic_url = result.get("url")
         
         # Update user's profile picture URL in MongoDB
-        result = await collection.update_one(
-            {"email": email},  # Find the document with this email
-            {"$set": {"profile_picture_url": new_url}}  # Update the URL
+        await collection.update_one(
+            {"email": email},
+            {"$set": {"profile_picture": profile_pic_url}}
         )
+        
         return {
             "message": "Profile picture uploaded successfully.",
             "profile_picture_url": profile_pic_url  # Optionally return the URL
