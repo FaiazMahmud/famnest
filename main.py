@@ -215,7 +215,10 @@ async def create_group(info: GroupCreate):
         {"$set": {"groups": user_groups, "current_group": current_group}}
     )
 
-    return {"message": "Group created successfully."}
+    return {
+        "success": True,
+        "message": "Group created successfully."
+    }
 
 @app.post("/get-user-data/")
 async def get_user_data(info: EmailRequest):
