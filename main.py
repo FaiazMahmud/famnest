@@ -341,7 +341,7 @@ async def edit_user_profile(info: EditUserProfile):
 @app.post("/upload-profile-picture/")
 async def upload_profile_picture(email: str = Form(...), file: UploadFile = File(...)):
     collection = db.get_collection("Profile Pictures")
-    user_collection = db.get_collection("Users")
+    users_collection = db.get_collection("Users")
     try:
         # Check if the user exists (implement your user checking logic here)
         user = await users_collection.find_one({"email": email})
