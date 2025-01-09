@@ -216,8 +216,13 @@ async def create_group(info: GroupCreate):
     )
 
     return {
-        "success": True,
-        "message": "Group created successfully."
+         "success": True,
+         "message": "Group created successfully.",
+         "group": {
+            "group_name": info.group_name,
+            "group_code": info.group_code,
+            "created_at": datetime.utcnow().isoformat(),
+             }
     }
 
 @app.post("/get-user-data/")
