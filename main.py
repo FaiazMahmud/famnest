@@ -1,3 +1,4 @@
+
 from fastapi import FastAPI, HTTPException, Depends, UploadFile, File , Form
 from pydantic import BaseModel
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -97,6 +98,18 @@ class UpdatePassword(BaseModel):
 class GroupPasswordRequest(BaseModel):
     group_code: str
 
+class JoinGroupRequest(BaseModel):
+    email: str
+    group_code: str
+
+class LeaveGroupRequest(BaseModel):
+    email: str
+    group_code: str
+
+class UpdateCurrentGroup(BaseModel):
+    email: str
+    group_code: str
+
 class EditUserProfile(BaseModel):
     new_name: str
     new_email: str
@@ -106,7 +119,8 @@ class AddProfilePicture(BaseModel):
     email : str
     profile_picture_url : str
     
-# Endpoints
+
+
 @app.post("/register/")
 async def register_user(info: Register):
     collection = db.get_collection("Users")
@@ -121,10 +135,13 @@ async def register_user(info: Register):
         "email": info.email,
         "password": hashed_password,
         "groups": [],
+        "current_group": None,
+        "profile_picture_url": None,  # Default to None
         "login_status": False,
         "created_at": datetime.utcnow()
     })
     return {"message": "User registered successfully."}
+
 
 @app.post("/login/")
 async def login_user(info: Login):
@@ -157,58 +174,149 @@ async def logout_user(info: EmailRequest):
 
     return {"message": "User logged out successfully."}
 
+
+        
 def serialize_doc(doc):
-    # Check if 'created_at' is a datetime object and convert it to ISO format
     if "created_at" in doc and isinstance(doc["created_at"], datetime):
-        doc["created_at"] = doc["created_at"].isoformat()  # Convert datetime to ISO format
-    return {key: value for key, value in doc.items() if key != "_id"}  # Exclude _id
+        doc["created_at"] = doc["created_at"].isoformat()
+    return {key: value for key, value in doc.items() if key != "_id"}
 
 @app.post("/create-group/")
 async def create_group(info: GroupCreate):
     group_collection = db.get_collection("Groups")
     user_collection = db.get_collection("Users")
 
-    # Check if the group code already exists
     existing_group = await group_collection.find_one({"group_code": info.group_code})
     if existing_group:
-        raise HTTPException(
-            status_code=400,
-            detail={"success": False, "message": "Group code already exists."}
-        )
+        raise HTTPException(status_code=400, detail="Group code already exists.")
 
-    # Create the group data
     group_data = {
         "group_name": info.group_name,
         "group_code": info.group_code,
-        "created_at": datetime.utcnow()
+        "created_at": datetime.utcnow(),
+        "members": [{"email": info.email, "joined_at": datetime.utcnow()}]
     }
 
-    # Insert the group into the Groups collection
     await group_collection.insert_one(group_data)
 
-    # Check if the user exists
     user = await user_collection.find_one({"email": info.email})
     if not user:
-        raise HTTPException(
-            status_code=404,
-            detail={"success": False, "message": "User not found."}
-        )
+        raise HTTPException(status_code=404, detail="User not found.")
 
-    # Update the user's groups
+    user_groups = user.get("groups", [])
+    user_groups.append({"group_name": info.group_name, "group_code": info.group_code, "created_at": datetime.utcnow()})
+
+    current_group = user.get("current_group")
+    if not current_group:
+        current_group = {"group_name": info.group_name, "group_code": info.group_code}
+
     await user_collection.update_one(
         {"email": info.email},
-        {"$push": {"groups": serialize_doc(group_data)}}  # Serialize and exclude _id
+        {"$set": {"groups": user_groups, "current_group": current_group}}
     )
 
-    # Serialize group data for the response
-    serialized_group_data = serialize_doc(group_data)
+    return {"message": "Group created successfully."}
 
-    # Return a successful response
+@app.post("/get-user-data/")
+async def get_user_data(info: EmailRequest):
+    collection = db.get_collection("Users")
+    user = await collection.find_one({"email": info.email})
+
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found.")
+
+    groups = [serialize_doc(group) for group in user.get("groups", [])]
+
     return {
-        "success": True,
-        "message": "Group created successfully.",
-        "group": serialized_group_data
+        "name": user.get("name"),
+        "email": user.get("email"),
+        "groups": groups,
+        "current_group": user.get("current_group"),
+        "profile_picture_url": user.get("profile_picture_url"),
+        "login_status": user.get("login_status"),
+        "created_at": user.get("created_at").isoformat() if isinstance(user.get("created_at"), datetime) else user.get("created_at"),
+        "last_login": user.get("last_login").isoformat() if isinstance(user.get("last_login"), datetime) else user.get("last_login"),
     }
+
+@app.post("/join-group/")
+async def join_group(info: JoinGroupRequest):
+    group_collection = db.get_collection("Groups")
+    user_collection = db.get_collection("Users")
+
+    group = await group_collection.find_one({"group_code": info.group_code})
+    if not group:
+        raise HTTPException(status_code=404, detail="Group not found.")
+
+    for member in group.get("members", []):
+        if member["email"] == info.email:
+            raise HTTPException(status_code=400, detail="User is already a member of this group.")
+
+    await group_collection.update_one(
+        {"group_code": info.group_code},
+        {"$push": {"members": {"email": info.email, "joined_at": datetime.utcnow()}}}
+    )
+
+    user = await user_collection.find_one({"email": info.email})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found.")
+
+    user_groups = user.get("groups", [])
+    user_groups.append({"group_name": group["group_name"], "group_code": group["group_code"], "created_at": group["created_at"]})
+
+    await user_collection.update_one(
+        {"email": info.email},
+        {"$set": {"groups": user_groups}}
+    )
+
+    return {"message": "User successfully joined the group."}
+
+@app.post("/leave-group/")
+async def leave_group(info: LeaveGroupRequest):
+    group_collection = db.get_collection("Groups")
+    user_collection = db.get_collection("Users")
+
+    await group_collection.update_one(
+        {"group_code": info.group_code},
+        {"$pull": {"members": {"email": info.email}}}
+    )
+
+    await user_collection.update_one(
+        {"email": info.email},
+        {"$pull": {"groups": {"group_code": info.group_code}}}
+    )
+
+    return {"message": "User successfully left the group."}
+
+
+@app.post("/get-group-members/")
+async def get_group_members(info: GroupPasswordRequest):
+    group_collection = db.get_collection("Groups")
+    group = await group_collection.find_one({"group_code": info.group_code})
+
+    if not group:
+        raise HTTPException(status_code=404, detail="Group not found.")
+
+    return {"group_name": group["group_name"], "members": group["members"]}
+
+
+@app.post("/update-current-group/")
+async def update_current_group(info: UpdateCurrentGroup):
+    collection = db.get_collection("Users")
+    user = await collection.find_one({"email": info.email})
+
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found.")
+
+    group = next((g for g in user.get("groups", []) if g["group_code"] == info.group_code), None)
+    if not group:
+        raise HTTPException(status_code=404, detail="Group not found for this user.")
+
+    await collection.update_one(
+        {"email": info.email},
+        {"$set": {"current_group": group}}
+    )
+
+    return {"message": "Current group updated successfully."}
 
 
 @app.post("/find-group/")
@@ -220,51 +328,6 @@ async def find_group(info: GroupPasswordRequest):
         return {"group_name": group["group_name"], "group_code": group["group_code"]}
     raise HTTPException(status_code=404, detail="Group not found.")
 
-from datetime import datetime
-
-@app.post("/get-user-data/")
-async def get_user_data(info: EmailRequest):
-    # Access the 'Users' collection
-    collection = db.get_collection("Users")
-    
-    # Fetch the user document by email
-    user = await collection.find_one({"email": info.email})
-    
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found.")
-
-    # Prepare groups data (handle different formats of `created_at`)
-    groups = [
-        {
-            "group_name": group.get("group_name", "Unknown"),
-            "group_code": group.get("group_code", ""),
-            "created_at": (
-                group.get("created_at").isoformat() 
-                if isinstance(group.get("created_at"), datetime) 
-                else group.get("created_at")  # Return as is if already a string
-            )
-        }
-        for group in user.get("groups", [])
-    ]
-
-    # Return the formatted user data
-    return {
-        "name": user.get("name"),
-        "email": user.get("email"),
-        "password": user.get("password"),  # This may not need to be sent to the frontend
-        "groups": groups,
-        "login_status": user.get("login_status", False),
-        "created_at": (
-            user.get("created_at").isoformat() 
-            if isinstance(user.get("created_at"), datetime) 
-            else user.get("created_at")  # Return as is if already a string
-        ),
-        "last_login": (
-            user.get("last_login").isoformat() 
-            if isinstance(user.get("last_login"), datetime) 
-            else user.get("last_login")  # Return as is if already a string
-        ),
-    }
 
 # Forgot Password Endpoint
 @app.post("/forgot-password/")
