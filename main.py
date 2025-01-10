@@ -110,6 +110,11 @@ class UpdateCurrentGroup(BaseModel):
     email: str
     group_code: str
 
+
+class RemoveGroupMemberRequest(BaseModel):
+    group_code: str
+    email: str
+
 class EditUserProfile(BaseModel):
     new_name: str
     new_email: str
@@ -333,6 +338,24 @@ async def find_group(info: GroupPasswordRequest):
         return {"group_name": group["group_name"], "group_code": group["group_code"]}
     raise HTTPException(status_code=404, detail="Group not found.")
 
+
+@app.post("/remove-group-member/")
+async def remove_group_member(info: RemoveGroupMemberRequest):
+    group_collection = db.get_collection("Groups")
+    group = await group_collection.find_one({"group_code": info.group_code})
+
+    if not group:
+        raise HTTPException(status_code=404, detail="Group not found.")
+
+    if not any(member["email"] == info.email for member in group["members"]):
+        raise HTTPException(status_code=404, detail="Member not found in the group.")
+
+    await group_collection.update_one(
+        {"group_code": info.group_code},
+        {"$pull": {"members": {"email": info.email}}}
+    )
+
+    return {"message": "Member removed successfully."}
 
 # Forgot Password Endpoint
 @app.post("/forgot-password/")
