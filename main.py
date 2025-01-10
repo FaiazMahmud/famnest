@@ -114,12 +114,8 @@ class EditUserProfile(BaseModel):
     new_name: str
     new_email: str
     old_email: str
-    
-class AddProfilePicture(BaseModel):
-    email : str
     profile_picture_url : str
-    
-
+   
 
 @app.post("/register/")
 async def register_user(info: Register):
@@ -404,6 +400,7 @@ async def edit_user_profile(info: EditUserProfile):
             "$set": {
                 "name": info.new_name,
                 "email": info.new_email,
+                "profile_picture_url": info.profile_picture_url
             }
         }
     )
