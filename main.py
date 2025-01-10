@@ -72,6 +72,7 @@ class Register(BaseModel):
     name: str
     email: str
     password: str
+    profile_picture_url: str
 
 class Login(BaseModel):
     email: str
@@ -133,7 +134,8 @@ async def register_user(info: Register):
         "current_group": None,
         "profile_picture_url": None,  # Default to None
         "login_status": False,
-        "created_at": datetime.utcnow()
+        "created_at": datetime.utcnow(),
+        "profile_picture_url": info.profile_picture_url
     })
     return {"message": "User registered successfully."}
 
