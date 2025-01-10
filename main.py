@@ -120,7 +120,11 @@ class EditUserProfile(BaseModel):
     new_email: str
     old_email: str
     profile_picture_url : str
-   
+
+class ChangePassword(BaseModel):
+    email: str
+    new_password: str
+    
 
 @app.post("/register/")
 async def register_user(info: Register):
@@ -451,3 +455,18 @@ async def upload_profile_picture(file: UploadFile = File(...)):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to upload image: {str(e)}")
+
+@app.post("/change-password/")
+async def change_password(info: ChangePassword):
+    hashed_password = hash_password(info.new_password)
+    collection = db.get_collection("Users")
+    update_result = collection.update_one(
+        {"email": info.email},  # Query to find the document
+        {
+            "$set": {
+                "password": hashed_password
+            }
+        }
+    )
+    return {"message": "Your Password is Changed Successfully."}
+    
