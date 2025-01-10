@@ -410,15 +410,8 @@ async def edit_user_profile(info: EditUserProfile):
     return {"message": "Your Profile is Updated Successfully"}
 
 @app.post("/upload-profile-picture/")
-async def upload_profile_picture(email: str = Form(...), file: UploadFile = File(...)):
-    collection = db.get_collection("Profile Pictures")
-    users_collection = db.get_collection("Users")
+async def upload_profile_picture(file: UploadFile = File(...)):
     try:
-        # Check if the user exists (implement your user checking logic here)
-        user = await users_collection.find_one({"email": email})
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found.")
-        
         # Validate the file type (ensure it's an image)
         if not file.content_type.startswith('image'):
             raise HTTPException(status_code=400, detail="Invalid file type. Please upload an image.")
@@ -430,12 +423,6 @@ async def upload_profile_picture(email: str = Form(...), file: UploadFile = File
         # Upload the image to Cloudinary
         result = cloudinary.uploader.upload(file.file, folder="profile_pictures", public_id=unique_filename)
         profile_pic_url = result.get("url")
-        
-        # Update user's profile picture URL in MongoDB
-        await collection.update_one(
-            {"email": email},
-            {"$set": {"profile_picture": profile_pic_url}}
-        )
         
         return {
             "message": "Profile picture uploaded successfully.",
