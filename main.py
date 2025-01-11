@@ -622,7 +622,7 @@ async def update_event(event_id: str, event: EventCreate):
 async def upload_image(
     file_name: str = Form(...), 
     group_code: str = Form(...),
-    file: UploadFile,
+    file: UploadFile = File(...),
 ):
     try:
         # Upload the file to Cloudinary first
