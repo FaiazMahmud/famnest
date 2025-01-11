@@ -643,7 +643,7 @@ async def upload_image(
 
         if user:
             # If group exists, push the file details to the existing document
-            result = users_collection.update_one(
+            result = groups_collection.update_one(
                 {"group_code": group_code},
                 {
                     "$push": {
