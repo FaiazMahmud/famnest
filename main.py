@@ -671,13 +671,12 @@ async def upload_image(
             await groups_collection.insert_one(new_user)  # Use await here
             print("New user created and file details added.")
 
-        return JSONResponse(
-            status_code=200,
-            content={"message": "File uploaded successfully", "image_url": cloudinary_url},
-        )
+        # Return the response directly as a dictionary
+        return {"message": "File uploaded successfully", "image_url": cloudinary_url}
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 
 
