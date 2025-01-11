@@ -639,11 +639,11 @@ async def upload_image(
 
         # Check if group exists in the database
         groups_collection = db.get_collection("TimeCapsuleImages")
-        user = groups_collection.find_one({"group_code": group_code})
+        user = await groups_collection.find_one({"group_code": group_code})  # Use await here
 
         if user:
             # If group exists, push the file details to the existing document
-            result = groups_collection.update_one(
+            result = await groups_collection.update_one(  # Use await here
                 {"group_code": group_code},
                 {
                     "$push": {
@@ -660,7 +660,7 @@ async def upload_image(
         else:
             # If group does not exist, create a new user and add the file details
             new_user = {
-                "email": email,
+                "email": "example@example.com",  # Assuming you are adding an email
                 "uploaded_images": [
                     {
                         "file_name": file_name,
@@ -668,7 +668,7 @@ async def upload_image(
                     }
                 ]
             }
-            groups_collection.insert_one(new_user)
+            await groups_collection.insert_one(new_user)  # Use await here
             print("New user created and file details added.")
 
         return JSONResponse(
