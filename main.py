@@ -124,6 +124,28 @@ class EditUserProfile(BaseModel):
 class ChangePassword(BaseModel):
     email: str
     new_password: str
+
+
+# Pydantic Models
+class EventCreate(BaseModel):
+    group_code: str
+    name: str
+    start_date: datetime
+    end_date: datetime
+    location: Optional[str] = None
+    url: Optional[str] = None
+    description: Optional[str] = None
+
+
+class EventRetrieve(BaseModel):
+    id: str
+    group_code: str
+    name: str
+    start_date: datetime
+    end_date: datetime
+    location: Optional[str] = None
+    url: Optional[str] = None
+    description: Optional[str] = None
     
 
 @app.post("/register/")
@@ -469,4 +491,127 @@ async def change_password(info: ChangePassword):
         }
     )
     return {"message": "Your Password is Changed Successfully."}
+
+
+
+
+
+
+@app.post("/create-event/")
+async def create_event(event: EventCreate):
+    """
+    Create a new event for a specific group.
+    """
+    event_collection = db.get_collection("Events")
+    group_collection = db.get_collection("Groups")
+
+    # Validate group code
+    group = await group_collection.find_one({"group_code": event.group_code})
+    if not group:
+        raise HTTPException(status_code=404, detail="Group not found.")
+
+    # Validate start and end date
+    if event.end_date <= event.start_date:
+        raise HTTPException(status_code=400, detail="End date must be after start date.")
+
+    # Insert the event
+    event_data = {
+        "group_code": event.group_code,
+        "name": event.name,
+        "start_date": event.start_date,
+        "end_date": event.end_date,
+        "location": event.location,
+        "url": event.url,
+        "description": event.description,
+        "created_at": datetime.utcnow(),
+    }
+    result = await event_collection.insert_one(event_data)
+
+    return {"success": True, "message": "Event created successfully.", "event_id": str(result.inserted_id)}
+
+
+@app.get("/get-events/{group_code}", response_model=List[EventRetrieve])
+async def get_events(group_code: str, skip: int = 0, limit: int = 20):
+    """
+    Retrieve all events for a specific group.
+    """
+    event_collection = db.get_collection("Events")
+    events = await event_collection.find({"group_code": group_code}).skip(skip).limit(limit).to_list(length=limit)
+
+    return [
+        {
+            "id": str(event["_id"]),
+            "group_code": event["group_code"],
+            "name": event["name"],
+            "start_date": event["start_date"],
+            "end_date": event["end_date"],
+            "location": event.get("location"),
+            "url": event.get("url"),
+            "description": event.get("description"),
+        }
+        for event in events
+    ]
+
+
+@app.get("/get-event/{event_id}", response_model=EventRetrieve)
+async def get_event(event_id: str):
+    """
+    Retrieve details of a single event by its ID.
+    """
+    event_collection = db.get_collection("Events")
+
+    event = await event_collection.find_one({"_id": ObjectId(event_id)})
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found.")
+
+    return {
+        "id": str(event["_id"]),
+        "group_code": event["group_code"],
+        "name": event["name"],
+        "start_date": event["start_date"],
+        "end_date": event["end_date"],
+        "location": event.get("location"),
+        "url": event.get("url"),
+        "description": event.get("description"),
+    }
+
+
+@app.delete("/delete-event/{event_id}")
+async def delete_event(event_id: str):
+    """
+    Delete an event by its ID.
+    """
+    event_collection = db.get_collection("Events")
+
+    result = await event_collection.delete_one({"_id": ObjectId(event_id)})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Event not found.")
+
+    return {"success": True, "message": "Event deleted successfully."}
+
+
+@app.put("/update-event/{event_id}")
+async def update_event(event_id: str, event: EventCreate):
+    """
+    Update an event by its ID.
+    """
+    event_collection = db.get_collection("Events")
+
+    updated_event = {
+        "group_code": event.group_code,
+        "name": event.name,
+        "start_date": event.start_date,
+        "end_date": event.end_date,
+        "location": event.location,
+        "url": event.url,
+        "description": event.description,
+        "updated_at": datetime.utcnow(),
+    }
+
+    result = await event_collection.update_one({"_id": ObjectId(event_id)}, {"$set": updated_event})
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Event not found.")
+
+    return {"success": True, "message": "Event updated successfully."}
+
     
