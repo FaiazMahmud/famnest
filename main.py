@@ -677,6 +677,23 @@ async def upload_image(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/get-images/")
+async def get_images(group_code: str):
+    try:
+        # Fetch images associated with the group from MongoDB
+        groups_collection = db.get_collection("TimeCapsuleImages")
+        group = await groups_collection.find_one({"group_code": group_code})
+        
+        # If the group is not found, return an empty list
+        if not group:
+            return {"images": []}
+        
+        # Return the list of images with their URLs
+        images = group.get("uploaded_images", [])
+        return {"images": images}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 
 
