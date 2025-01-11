@@ -660,7 +660,7 @@ async def upload_image(
         else:
             # If group does not exist, create a new user and add the file details
             new_user = {
-                "email": "example@example.com",  # Assuming you are adding an email
+                "group_code": group_code,  # Assuming you are adding an email
                 "uploaded_images": [
                     {
                         "file_name": file_name,
