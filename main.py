@@ -736,6 +736,7 @@ async def upload_image(
         raise HTTPException(status_code=500, detail=str(e))
 @app.get("/get-images/")
 async def get_images(group_code: str):
+    print(group_code)
     try:
         # Fetch images associated with the group from MongoDB
         groups_collection = db.get_collection("TimeCapsuleImages")
