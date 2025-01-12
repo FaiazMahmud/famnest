@@ -743,6 +743,7 @@ async def get_images(group_code: str):
         
         # If the group is not found, return an empty list
         if not group:
+            print(group_code)
             return {"images": []}
         
         # Return the list of images with their URLs
