@@ -618,6 +618,64 @@ async def update_event(event_id: str, event: EventCreate):
 
     return {"success": True, "message": "Event updated successfully."}
 
+# @app.post("/upload-image/")
+# async def upload_image(
+#     file_name: str = Form(...), 
+#     group_code: str = Form(...),
+#     file: UploadFile = File(...),
+# ):
+#     try:
+#         # Upload the file to Cloudinary first
+#         upload_result = cloudinary.uploader.upload(
+#             file.file,
+#             public_id=file_name,
+#             resource_type="image",  # Adjust resource_type if needed
+#         )
+
+#         # Extract the Cloudinary URL
+#         cloudinary_url = upload_result.get("secure_url")
+#         if not cloudinary_url:
+#             raise HTTPException(status_code=500, detail="Failed to upload image to Cloudinary")
+
+#         # Check if group exists in the database
+#         groups_collection = db.get_collection("TimeCapsuleImages")
+#         user = await groups_collection.find_one({"group_code": group_code})  # Use await here
+
+#         if user:
+#             # If group exists, push the file details to the existing document
+#             result = await groups_collection.update_one(  # Use await here
+#                 {"group_code": group_code},
+#                 {
+#                     "$push": {
+#                         "uploaded_images": {
+#                             "file_name": file_name,
+#                             "image_url": cloudinary_url
+#                         }
+#                     }
+#                 }
+#             )
+#             if result.modified_count == 0:
+#                 raise HTTPException(status_code=500, detail="Failed to update group with file details")
+#             print("File added to existing user.")
+#         else:
+#             # If group does not exist, create a new user and add the file details
+#             new_user = {
+#                 "group_code": group_code,  # Assuming you are adding an email
+#                 "uploaded_images": [
+#                     {
+#                         "file_name": file_name,
+#                         "image_url": cloudinary_url
+#                     }
+#                 ]
+#             }
+#             await groups_collection.insert_one(new_user)  # Use await here
+#             print("New user created and file details added.")
+
+#         # Return the response directly as a dictionary
+#         return {"message": "File uploaded successfully", "image_url": cloudinary_url}
+
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=str(e))
 @app.post("/upload-image/")
 async def upload_image(
     file_name: str = Form(...), 
@@ -676,7 +734,6 @@ async def upload_image(
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
 @app.get("/get-images/")
 async def get_images(group_code: str):
     try:
