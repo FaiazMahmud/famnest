@@ -799,12 +799,15 @@ def extract_public_id(url: str) -> str:
     
 @app.delete("/delete-image")
 async def delete_image(group_code: str, index: int):
+    print("booooo")
+    print(group_code)
     collection = db.get_collection("TimeCapsuleImages")
     document = collection.find_one({"group_code": group_code})
 
     if not document:
         raise HTTPException(status_code=404, detail="Group not found")
-
+    print("noooh")
+    print(group_code)
     # Check if index is valid
     uploaded_images = document.get("uploaded_images", [])
     if index < 0 or index >= len(uploaded_images):
@@ -814,10 +817,12 @@ async def delete_image(group_code: str, index: int):
     uploaded_images.pop(index)
     image_url = uploaded_images[index].get("image_url")
     
+    print("blahhhh")
+    print(group_code)
+    
     if not image_url:
         raise HTTPException(status_code=404, detail="Image URL not found")
     public_id = extract_public_id(image_url)
-    
     #print(public_id)
     response = cloudinary.api.delete_resources([public_id])
     # Update the document in MongoDB
