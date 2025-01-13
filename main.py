@@ -709,7 +709,7 @@ async def upload_image(
         # Upload the file to Cloudinary first
         upload_result = cloudinary.uploader.upload(
             file.file,
-            public_id=file_name,
+            public_id=f'TimeCapsuleImages/{file_name}',
             resource_type="image",  # Adjust resource_type if needed
         )
 
@@ -757,6 +757,7 @@ async def upload_image(
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+        
 @app.get("/get-images/")
 async def get_images(group_code: str):
     print(group_code)
@@ -776,6 +777,58 @@ async def get_images(group_code: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+def extract_public_id(url: str) -> str:
+    # Parse the URL to extract the public ID
+    parsed_url = urlparse(url)
+    path_parts = parsed_url.path.split("/")
+
+    # Find where "upload" appears in the path and get the index of the next part
+    if "upload" in path_parts:
+        # Skip version (v<version_number>) and start from folder name
+        upload_index = path_parts.index("upload") + 1
+        public_id_parts = path_parts[upload_index + 1:]  # Skip version part and get everything after "upload"
+
+        # Join the parts together to form the public ID
+        public_id_with_extension = "/".join(public_id_parts)
+
+        # Remove the file extension (e.g., .jpeg.jpg) from the public ID
+        public_id = ".".join(public_id_with_extension.split(".")[:-1])
+
+        return public_id
+    raise ValueError("Invalid Cloudinary URL")
+    
+@app.delete("/delete-image")
+async def delete_image(group_code: str, index: int):
+    collection = db.get_collection("TimeCapsuleImages")
+    document = collection.find_one({"group_code": group_code})
+
+    if not document:
+        raise HTTPException(status_code=404, detail="Group not found")
+
+    # Check if index is valid
+    uploaded_images = document.get("uploaded_images", [])
+    if index < 0 or index >= len(uploaded_images):
+        raise HTTPException(status_code=400, detail="Invalid index")
+        
+    # Remove the item at the specified index
+    uploaded_images.pop(index)
+    image_url = uploaded_images[index].get("image_url")
+    
+    if not image_url:
+        raise HTTPException(status_code=404, detail="Image URL not found")
+    public_id = extract_public_id(image_url)
+    
+    #print(public_id)
+    response = cloudinary.api.delete_resources([public_id])
+    # Update the document in MongoDB
+    result = collection.update_one(
+        {"group_code": group_code},
+        {"$set": {"uploaded_images": uploaded_images}}
+    )
+    if result.modified_count == 1:
+        return {"message": "Image deleted successfully"}
+    else:
+        raise HTTPException(status_code=500, detail="Failed to update document")
 
 
 
