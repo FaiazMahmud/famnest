@@ -14,6 +14,7 @@ import random
 import string
 import cloudinary
 import cloudinary.uploader
+from urllib.parse import urlparse
 import uuid
 
 # Initialize FastAPI app
