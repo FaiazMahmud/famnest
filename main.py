@@ -801,7 +801,7 @@ def extract_public_id(url: str) -> str:
 async def delete_image(group_code: str, index: int):
     
     collection = db.get_collection("TimeCapsuleImages")
-    document = collection.find_one({"group_code": group_code})
+    document = await collection.find_one({"group_code": group_code})
 
     if not document:
         raise HTTPException(status_code=404, detail="Group not found")
@@ -825,7 +825,7 @@ async def delete_image(group_code: str, index: int):
     #print(public_id)
     response = cloudinary.api.delete_resources([public_id])
     # Update the document in MongoDB
-    result = collection.update_one(
+    result = await collection.update_one(
         {"group_code": group_code},
         {"$set": {"uploaded_images": uploaded_images}}
     )
