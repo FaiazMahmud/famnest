@@ -308,7 +308,15 @@ async def join_group(info: JoinGroupRequest):
         {"$set": {"groups": user_groups}}
     )
 
-    return {"message": "User successfully joined the group."}
+    return {
+        "success": True,
+        "message": "User successfully joined the group.",
+        "group": {
+            "group_name": group["group_name"],
+            "group_code": group["group_code"],
+            "created_at": group["created_at"]
+        }
+    }
 
 @app.post("/leave-group/")
 async def leave_group(info: LeaveGroupRequest):
