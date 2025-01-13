@@ -278,36 +278,49 @@ async def get_user_data(info: EmailRequest):
         "last_login": user.get("last_login").isoformat() if isinstance(user.get("last_login"), datetime) else user.get("last_login"),
     }
 
+
 @app.post("/join-group/")
 async def join_group(info: JoinGroupRequest):
     group_collection = db.get_collection("Groups")
     user_collection = db.get_collection("Users")
 
+    # Check if the group exists
     group = await group_collection.find_one({"group_code": info.group_code})
     if not group:
         raise HTTPException(status_code=404, detail="Group not found.")
 
-    for member in group.get("members", []):
-        if member["email"] == info.email:
-            raise HTTPException(status_code=400, detail="User is already a member of this group.")
+    # Check if the user is already a member
+    if any(member["email"] == info.email for member in group.get("members", [])):
+        raise HTTPException(status_code=400, detail="User is already a member of this group.")
 
+    # Add the user to the group
     await group_collection.update_one(
         {"group_code": info.group_code},
         {"$push": {"members": {"email": info.email, "joined_at": datetime.utcnow()}}}
     )
 
+    # Check if the user exists
     user = await user_collection.find_one({"email": info.email})
     if not user:
         raise HTTPException(status_code=404, detail="User not found.")
 
+    # Update user's groups and current group
     user_groups = user.get("groups", [])
-    user_groups.append({"group_name": group["group_name"], "group_code": group["group_code"], "created_at": group["created_at"]})
+    group_data = {
+        "group_name": group["group_name"],
+        "group_code": group["group_code"],
+        "created_at": group["created_at"]
+    }
+    user_groups.append(group_data)
+
+    current_group = group_data  # Set the current group to the newly joined group
 
     await user_collection.update_one(
         {"email": info.email},
-        {"$set": {"groups": user_groups}}
+        {"$set": {"groups": user_groups, "current_group": current_group}}
     )
 
+    # Return success response
     return {
         "success": True,
         "message": "User successfully joined the group.",
@@ -317,6 +330,8 @@ async def join_group(info: JoinGroupRequest):
             "created_at": group["created_at"]
         }
     }
+
+
 
 @app.post("/leave-group/")
 async def leave_group(info: LeaveGroupRequest):
