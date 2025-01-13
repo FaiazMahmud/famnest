@@ -797,10 +797,9 @@ def extract_public_id(url: str) -> str:
         return public_id
     raise ValueError("Invalid Cloudinary URL")
     
-@app.delete("/delete-image/")
+@app.delete("/delete-image/{group_code}/{index}")
 async def delete_image(group_code: str, index: int):
-    print("booooo")
-    print(group_code)
+    
     collection = db.get_collection("TimeCapsuleImages")
     document = collection.find_one({"group_code": group_code})
 
