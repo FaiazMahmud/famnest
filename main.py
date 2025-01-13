@@ -813,10 +813,11 @@ async def delete_image(group_code: str, index: int):
     uploaded_images = document.get("uploaded_images", [])
     if index < 0 or index >= len(uploaded_images):
         raise HTTPException(status_code=400, detail="Invalid index")
-        
+
+    image_url = uploaded_images[index].get("image_url")
     # Remove the item at the specified index
     uploaded_images.pop(index)
-    image_url = uploaded_images[index].get("image_url")
+    
     
     print("blahhhh")
     print(group_code)
