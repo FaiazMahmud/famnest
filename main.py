@@ -215,7 +215,7 @@ def serialize_doc(doc):
         doc["created_at"] = doc["created_at"].isoformat()
     return {key: value for key, value in doc.items() if key != "_id"}
 
-@app.post("/create-group/")
+'''@app.post("/create-group/")
 async def create_group(info: GroupCreate):
     group_collection = db.get_collection("Groups")
     user_collection = db.get_collection("Users")
@@ -257,7 +257,77 @@ async def create_group(info: GroupCreate):
             "group_code": info.group_code,
             "created_at": datetime.utcnow().isoformat(),
              }
+    }'''
+
+
+@app.post("/create-group/")
+async def create_group(info: GroupCreate):
+    group_collection = db.get_collection("Groups")
+    user_collection = db.get_collection("Users")
+    categories_collection = db.get_collection("Categories")
+    folders_collection = db.get_collection("Folders")
+
+    # Check if the group code already exists
+    existing_group = await group_collection.find_one({"group_code": info.group_code})
+    if existing_group:
+        raise HTTPException(status_code=400, detail="Group code already exists.")
+
+    # Insert the group into the Groups collection
+    group_data = {
+        "group_name": info.group_name,
+        "group_code": info.group_code,
+        "created_at": datetime.utcnow(),
+        "members": [{"email": info.email, "joined_at": datetime.utcnow()}]
     }
+    await group_collection.insert_one(group_data)
+
+    # Fetch the user and update their group details
+    user = await user_collection.find_one({"email": info.email})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found.")
+
+    user_groups = user.get("groups", [])
+    user_groups.append({"group_name": info.group_name, "group_code": info.group_code, "created_at": datetime.utcnow()})
+
+    current_group = user.get("current_group")
+    if not current_group:
+        current_group = {"group_name": info.group_name, "group_code": info.group_code}
+
+    await user_collection.update_one(
+        {"email": info.email},
+        {"$set": {"groups": user_groups, "current_group": current_group}}
+    )
+
+    # Create default categories and folders
+    default_categories = ["Education", "Finance", "Medical"]
+    default_folders = ["Docs", "Images", "Videos", "Music"]
+
+    for category_name in default_categories:
+        # Insert category into the Categories collection
+        category_data = {
+            "category_name": category_name,
+            "group_code": info.group_code
+        }
+        category_result = await categories_collection.insert_one(category_data)
+
+        # Insert default folders for the category
+        for folder_name in default_folders:
+            folder_data = {
+                "folder_name": folder_name,
+                "category_id": str(category_result.inserted_id)
+            }
+            await folders_collection.insert_one(folder_data)
+
+    return {
+        "success": True,
+        "message": "Group created successfully with default categories and folders.",
+        "group": {
+            "group_name": info.group_name,
+            "group_code": info.group_code,
+            "created_at": datetime.utcnow().isoformat(),
+        }
+    }
+
 
 @app.post("/get-user-data/")
 async def get_user_data(info: EmailRequest):
