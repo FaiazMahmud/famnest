@@ -310,7 +310,7 @@ async def create_group(info: GroupCreate):
         # Insert category into the Categories collection
         category_data = {
             "category_name": category_name,
-            "group_code": info.group_code
+            "group_code": info.group_code,
             "is_preset": True
         }
         category_result = await categories_collection.insert_one(category_data)
