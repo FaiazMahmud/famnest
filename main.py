@@ -311,6 +311,7 @@ async def create_group(info: GroupCreate):
         category_data = {
             "category_name": category_name,
             "group_code": info.group_code
+            "is_preset": True
         }
         category_result = await categories_collection.insert_one(category_data)
 
@@ -1011,50 +1012,41 @@ async def rename_image(group_code: str, index: int, new_name: str):
 
 @app.post("/categories/")
 async def create_category(info: CategoryCreate):
+    """
+    Add a user-created category to a group.
+    """
     categories_collection = db.get_collection("Categories")
-    folders_collection = db.get_collection("Folders")
-
-    # Insert the category into the Categories collection
     category_data = {
         "category_name": info.category_name,
-        "group_code": info.group_code
+        "group_code": info.group_code,
+        "is_preset": False  # User-created category
     }
-    category_result = await categories_collection.insert_one(category_data)
-
-    # Create default folders for the new category
-    default_folders = ["Docs", "Images", "Videos", "Music"]
-    for folder_name in default_folders:
-        folder_data = {
-            "folder_name": folder_name,
-            "category_id": str(category_result.inserted_id)
-        }
-        await folders_collection.insert_one(folder_data)
-
+    result = await categories_collection.insert_one(category_data)
     return {
         "success": True,
-        "message": "Category created successfully with default folders.",
-        "category_id": str(category_result.inserted_id)
+        "message": "Category created successfully.",
+        "category_id": str(result.inserted_id)
     }
 
-
-'''def serialize_doc(doc):
-    return {
-        "id": str(doc["_id"]),
-        "category_name": doc["category_name"],
-        "is_preset": doc.get("is_preset", False)
-    }
-
-@app.get("/categories")
+@app.get("/categories/")
 async def get_categories(group_code: str):
     """
     Fetch categories for a specific group.
     Includes both preset and user-created categories.
     """
     try:
-        categories = await db["Categories"].find({"group_code": group_code}).to_list(length=100)
-        return [serialize_doc(category) for category in categories]
+        categories_cursor = db["Categories"].find({"group_code": group_code})
+        categories = await categories_cursor.to_list(length=100)
+        return [{
+            "id": str(category["_id"]),
+            "category_name": category["category_name"],
+            "is_preset": category.get("is_preset", False)
+        } for category in categories]
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error fetching categories: {str(e)}")'''
+        raise HTTPException(status_code=500, detail=f"Failed to fetch categories: {str(e)}")
+
+
+
 
 
 
