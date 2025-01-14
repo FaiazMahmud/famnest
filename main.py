@@ -1037,7 +1037,7 @@ async def create_category(info: CategoryCreate):
     }
 
 
-def serialize_doc(doc):
+'''def serialize_doc(doc):
     return {
         "id": str(doc["_id"]),
         "category_name": doc["category_name"],
@@ -1054,7 +1054,7 @@ async def get_categories(group_code: str):
         categories = await db["Categories"].find({"group_code": group_code}).to_list(length=100)
         return [serialize_doc(category) for category in categories]
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error fetching categories: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error fetching categories: {str(e)}")'''
 
 
 
