@@ -801,10 +801,8 @@ def extract_public_id(url: str) -> str:
     
 @app.delete("/delete-image/{group_code}/{index}")
 async def delete_image(group_code: str, index: int):
-    
     collection = db.get_collection("TimeCapsuleImages")
     document = await collection.find_one({"group_code": group_code})
-
     if not document:
         raise HTTPException(status_code=404, detail="Group not found")
     print("noooh")
@@ -817,11 +815,6 @@ async def delete_image(group_code: str, index: int):
     image_url = uploaded_images[index].get("image_url")
     # Remove the item at the specified index
     uploaded_images.pop(index)
-    
-    
-    print("blahhhh")
-    print(group_code)
-    
     if not image_url:
         raise HTTPException(status_code=404, detail="Image URL not found")
     public_id = extract_public_id(image_url)
@@ -834,6 +827,26 @@ async def delete_image(group_code: str, index: int):
     )
     if result.modified_count == 1:
         return {"message": "Image deleted successfully"}
+    else:
+        raise HTTPException(status_code=500, detail="Failed to update document")
+
+@app.put("/rename-image/{group_code}/{index}/{new_name}")
+async def rename_image(group_code: str, index: int, new_name: str):
+    collection = db.get_collection("TimeCapsuleImages")
+    # Find the document to ensure it exists
+    document = await collection.find_one({"group_code": group_code})
+    if not document:
+        raise HTTPException(status_code=404, detail="Group not found")
+    # Check if the index is valid
+    if index < 0 or index >= len(document.get("uploaded_images", [])):
+        raise HTTPException(status_code=400, detail="Invalid index")
+    # Use MongoDB positional array updates to change the file_name
+    result = await collection.update_one(
+        {"group_code": group_code},
+        {"$set": {f"uploaded_images.{index}.file_name": new_name}}
+    )
+    if result.modified_count == 1:
+        return {"message": "File name updated successfully"}
     else:
         raise HTTPException(status_code=500, detail="Failed to update document")
 
