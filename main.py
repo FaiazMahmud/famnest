@@ -924,7 +924,8 @@ async def get_mediafiles(group_code: str, media_type: str):
         # If the group is not found, return an empty list
         if not group:
             return {f"{media_type}s": []}
-        
+        print("i am here");
+        print(group_code);
         # Determine which type of media to return (either images or videos)
         if media_type == "image":
             media_files = group.get("uploaded_images", [])
