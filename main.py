@@ -775,27 +775,87 @@ async def update_event(event_id: str, event: EventCreate):
 
 #     except Exception as e:
 #         raise HTTPException(status_code=500, detail=str(e))
-@app.post("/upload-image/")
-async def upload_image(
-    file_name: str = Form(...), 
+
+# @app.post("/upload-image/")
+# async def upload_image(
+#     file_name: str = Form(...), 
+#     group_code: str = Form(...),
+#     file: UploadFile = File(...),
+# ):
+#     try:
+#         # Upload the file to Cloudinary first
+#         upload_result = cloudinary.uploader.upload(
+#             file.file,
+#             public_id=f'TimeCapsuleImages/{file_name}',
+#             resource_type="image",  # Adjust resource_type if needed
+#         )
+
+#         # Extract the Cloudinary URL
+#         cloudinary_url = upload_result.get("secure_url")
+#         if not cloudinary_url:
+#             raise HTTPException(status_code=500, detail="Failed to upload image to Cloudinary")
+
+#         # Check if group exists in the database
+#         groups_collection = db.get_collection("TimeCapsuleImages")
+#         user = await groups_collection.find_one({"group_code": group_code})  # Use await here
+
+#         if user:
+#             # If group exists, push the file details to the existing document
+#             result = await groups_collection.update_one(  # Use await here
+#                 {"group_code": group_code},
+#                 {
+#                     "$push": {
+#                         "uploaded_images": {
+#                             "file_name": file_name,
+#                             "image_url": cloudinary_url
+#                         }
+#                     }
+#                 }
+#             )
+#             if result.modified_count == 0:
+#                 raise HTTPException(status_code=500, detail="Failed to update group with file details")
+#             print("File added to existing user.")
+#         else:
+#             # If group does not exist, create a new user and add the file details
+#             new_user = {
+#                 "group_code": group_code,  # Assuming you are adding an email
+#                 "uploaded_images": [
+#                     {
+#                         "file_name": file_name,
+#                         "image_url": cloudinary_url
+#                     }
+#                 ]
+#             }
+#             await groups_collection.insert_one(new_user)  # Use await here
+#             print("New user created and file details added.")
+
+#         # Return the response directly as a dictionary
+#         return {"message": "File uploaded successfully", "image_url": cloudinary_url}
+
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=str(e))
+@app.post("/upload-mediafiles/")
+async def upload_media(
+    file_name: str = Form(...),
     group_code: str = Form(...),
     file: UploadFile = File(...),
+    resource_type: str = Form(...),
 ):
     try:
-        # Upload the file to Cloudinary first
+        # Upload the file to Cloudinary
         upload_result = cloudinary.uploader.upload(
             file.file,
-            public_id=f'TimeCapsuleImages/{file_name}',
-            resource_type="image",  # Adjust resource_type if needed
+            public_id=f'TimeCapsuleMedia/{file_name}',
+            resource_type=resource_type,
         )
 
         # Extract the Cloudinary URL
         cloudinary_url = upload_result.get("secure_url")
         if not cloudinary_url:
-            raise HTTPException(status_code=500, detail="Failed to upload image to Cloudinary")
+            raise HTTPException(status_code=500, detail="Failed to upload media to Cloudinary")
 
         # Check if group exists in the database
-        groups_collection = db.get_collection("TimeCapsuleImages")
+        groups_collection = db.get_collection("TimeCapsuleMediaFiles")
         user = await groups_collection.find_one({"group_code": group_code})  # Use await here
 
         if user:
@@ -804,52 +864,75 @@ async def upload_image(
                 {"group_code": group_code},
                 {
                     "$push": {
-                        "uploaded_images": {
+                        f"uploaded_{resource_type}s": {
                             "file_name": file_name,
-                            "image_url": cloudinary_url
+                            f"{resource_type}_url": cloudinary_url
                         }
                     }
                 }
             )
             if result.modified_count == 0:
-                raise HTTPException(status_code=500, detail="Failed to update group with file details")
-            print("File added to existing user.")
+                raise HTTPException(status_code=500, detail=f"Failed to update group with {resource_type} details")
+            print(f"{resource_type.capitalize()} added to existing user.")
         else:
             # If group does not exist, create a new user and add the file details
             new_user = {
-                "group_code": group_code,  # Assuming you are adding an email
-                "uploaded_images": [
+                "group_code": group_code,
+                f"uploaded_{resource_type}s": [
                     {
                         "file_name": file_name,
-                        "image_url": cloudinary_url
+                        f"url": cloudinary_url
                     }
                 ]
             }
             await groups_collection.insert_one(new_user)  # Use await here
-            print("New user created and file details added.")
+            print(f"New user created and {resource_type} details added.")
 
         # Return the response directly as a dictionary
-        return {"message": "File uploaded successfully", "image_url": cloudinary_url}
+        return {"message": "File uploaded successfully", f"url": cloudinary_url}
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+# @app.get("/get-images/")
+# async def get_images(group_code: str):
+#     print(group_code)
+#     try:
+#         # Fetch images associated with the group from MongoDB
+#         groups_collection = db.get_collection("TimeCapsule")
+#         group = await groups_collection.find_one({"group_code": group_code})
         
-@app.get("/get-images/")
-async def get_images(group_code: str):
-    print(group_code)
+#         # If the group is not found, return an empty list
+#         if not group:
+#             print(group_code)
+#             return {"images": []}
+        
+#         # Return the list of images with their URLs
+#         images = group.get("uploaded_images", [])
+#         return {"images": images}
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/get-mediafiles/")
+async def get_mediafiles(group_code: str, media_type: str):
     try:
-        # Fetch images associated with the group from MongoDB
-        groups_collection = db.get_collection("TimeCapsuleImages")
+        # Fetch the media files associated with the group from MongoDB
+        groups_collection = db.get_collection("TimeCapsuleMediaFiles")
         group = await groups_collection.find_one({"group_code": group_code})
         
         # If the group is not found, return an empty list
         if not group:
-            print(group_code)
-            return {"images": []}
+            return {f"{media_type}s": []}
         
-        # Return the list of images with their URLs
-        images = group.get("uploaded_images", [])
-        return {"images": images}
+        # Determine which type of media to return (either images or videos)
+        if media_type == "image":
+            media_files = group.get("uploaded_images", [])
+        elif media_type == "video":
+            media_files = group.get("uploaded_videos", [])
+        else:
+            raise HTTPException(status_code=400, detail="Invalid media type. Use 'image' or 'video'.")
+        return {f"{media_type}s": media_files}
+    
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
