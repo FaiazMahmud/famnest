@@ -867,7 +867,7 @@ async def upload_media(
                     "$push": {
                         f"uploaded_{resource_type}s": {
                             "file_name": file_name,
-                            f"{resource_type}_url": cloudinary_url
+                            f"url": cloudinary_url
                         }
                     }
                 }
@@ -882,7 +882,7 @@ async def upload_media(
                 f"uploaded_{resource_type}s": [
                     {
                         "file_name": file_name,
-                        f"{resource_type}_url": cloudinary_url
+                        f"url": cloudinary_url
                     }
                 ]
             }
