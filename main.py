@@ -954,11 +954,24 @@ async def create_category(info: CategoryCreate):
     }
 
 
-@app.get("/categories/{group_code}")
-async def get_categories(group_code: str):
-    categories = await db["Categories"].find({"group_code": group_code}).to_list(length=100)
-    return [serialize_doc(category) for category in categories]
+def serialize_doc(doc):
+    return {
+        "id": str(doc["_id"]),
+        "category_name": doc["category_name"],
+        "is_preset": doc.get("is_preset", False)
+    }
 
+@app.get("/categories")
+async def get_categories(group_code: str):
+    """
+    Fetch categories for a specific group.
+    Includes both preset and user-created categories.
+    """
+    try:
+        categories = await db["Categories"].find({"group_code": group_code}).to_list(length=100)
+        return [serialize_doc(category) for category in categories]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching categories: {str(e)}")
 
 
 
