@@ -958,54 +958,126 @@ def extract_public_id(url: str) -> str:
         return public_id
     raise ValueError("Invalid Cloudinary URL")
     
-@app.delete("/delete-image/{group_code}/{index}")
-async def delete_image(group_code: str, index: int):
-    collection = db.get_collection("TimeCapsuleImages")
-    document = await collection.find_one({"group_code": group_code})
-    if not document:
-        raise HTTPException(status_code=404, detail="Group not found")
-    print("noooh")
-    print(group_code)
-    # Check if index is valid
-    uploaded_images = document.get("uploaded_images", [])
-    if index < 0 or index >= len(uploaded_images):
-        raise HTTPException(status_code=400, detail="Invalid index")
+# @app.delete("/delete-image/{group_code}/{index}")
+# async def delete_image(group_code: str, index: int):
+#     collection = db.get_collection("TimeCapsuleImages")
+#     document = await collection.find_one({"group_code": group_code})
+#     if not document:
+#         raise HTTPException(status_code=404, detail="Group not found")
+#     print("noooh")
+#     print(group_code)
+#     # Check if index is valid
+#     uploaded_images = document.get("uploaded_images", [])
+#     if index < 0 or index >= len(uploaded_images):
+#         raise HTTPException(status_code=400, detail="Invalid index")
 
-    image_url = uploaded_images[index].get("image_url")
-    # Remove the item at the specified index
-    uploaded_images.pop(index)
-    if not image_url:
-        raise HTTPException(status_code=404, detail="Image URL not found")
-    public_id = extract_public_id(image_url)
-    #print(public_id)
-    response = cloudinary.api.delete_resources([public_id])
-    # Update the document in MongoDB
-    result = await collection.update_one(
-        {"group_code": group_code},
-        {"$set": {"uploaded_images": uploaded_images}}
-    )
-    if result.modified_count == 1:
-        return {"message": "Image deleted successfully"}
-    else:
-        raise HTTPException(status_code=500, detail="Failed to update document")
+#     image_url = uploaded_images[index].get("image_url")
+#     # Remove the item at the specified index
+#     uploaded_images.pop(index)
+#     if not image_url:
+#         raise HTTPException(status_code=404, detail="Image URL not found")
+#     public_id = extract_public_id(image_url)
+#     #print(public_id)
+#     response = cloudinary.api.delete_resources([public_id])
+#     # Update the document in MongoDB
+#     result = await collection.update_one(
+#         {"group_code": group_code},
+#         {"$set": {"uploaded_images": uploaded_images}}
+#     )
+#     if result.modified_count == 1:
+#         return {"message": "Image deleted successfully"}
+#     else:
+#         raise HTTPException(status_code=500, detail="Failed to update document")
 
-@app.put("/rename-image/{group_code}/{index}/{new_name}")
-async def rename_image(group_code: str, index: int, new_name: str):
-    collection = db.get_collection("TimeCapsuleImages")
+# @app.put("/rename-image/{group_code}/{index}/{new_name}/{media_type}")
+# async def rename_image(group_code: str, index: int, new_name: str , media_type : str):
+#     collection = db.get_collection("TimeCapsuleMediaFiles")
+#     # Find the document to ensure it exists
+#     document = await collection.find_one({"group_code": group_code})
+#     if not document:
+#         raise HTTPException(status_code=404, detail="Group not found")
+#     # Check if the index is valid
+#     if index < 0 or index >= len(document.get("uploaded_images", [])):
+#         raise HTTPException(status_code=400, detail="Invalid index")
+#     # Use MongoDB positional array updates to change the file_name
+#     result = await collection.update_one(
+#         {"group_code": group_code},
+#         {"$set": {f"uploaded_images.{index}.file_name": new_name}}
+#     )
+#     if result.modified_count == 1:
+#         return {"message": "File name updated successfully"}
+#     else:
+#         raise HTTPException(status_code=500, detail="Failed to update document")
+
+@app.put("/rename-mediafiles/{group_code}/{index}/{new_name}/{media_type}")
+async def rename_media(group_code: str, index: int, new_name: str, media_type: str):
+    # Ensure media_type is either 'image' or 'video'
+    if media_type not in ["image", "video"]:
+        raise HTTPException(status_code=400, detail="Invalid media type. Use 'image' or 'video'.")
+
+    collection = db.get_collection("TimeCapsuleMediaFiles")
+    
     # Find the document to ensure it exists
     document = await collection.find_one({"group_code": group_code})
     if not document:
         raise HTTPException(status_code=404, detail="Group not found")
-    # Check if the index is valid
-    if index < 0 or index >= len(document.get("uploaded_images", [])):
+    
+    media_field = f"uploaded_{media_type}s"  # Either 'uploaded_images' or 'uploaded_videos'
+    
+    # Check if the index is valid for the chosen media type
+    if index < 0 or index >= len(document.get(media_field, [])):
         raise HTTPException(status_code=400, detail="Invalid index")
-    # Use MongoDB positional array updates to change the file_name
+    
     result = await collection.update_one(
         {"group_code": group_code},
-        {"$set": {f"uploaded_images.{index}.file_name": new_name}}
+        {"$set": {f"{media_field}.{index}.file_name": new_name}}
     )
+    
     if result.modified_count == 1:
         return {"message": "File name updated successfully"}
+    else:
+        raise HTTPException(status_code=500, detail="Failed to update document")
+
+@app.delete("/delete-mediafiles/{group_code}/{index}/{media_type}")
+async def delete_media(group_code: str, index: int, media_type: str):
+    # Ensure media_type is either 'image' or 'video'
+    if media_type not in ["image", "video"]:
+        raise HTTPException(status_code=400, detail="Invalid media type. Use 'image' or 'video'.")
+
+    # Define the correct collection and media field
+    collection = db.get_collection("TimeCapsuleMediaFiles")
+    media_field = f"uploaded_{media_type}s"  # Either 'uploaded_images' or 'uploaded_videos'
+    
+    # Find the document to ensure it exists
+    document = await collection.find_one({"group_code": group_code})
+    if not document:
+        raise HTTPException(status_code=404, detail="Group not found")
+    
+    # Check if the index is valid for the selected media type
+    uploaded_media = document.get(media_field, [])
+    if index < 0 or index >= len(uploaded_media):
+        raise HTTPException(status_code=400, detail="Invalid index")
+    
+    media_url = uploaded_media[index].get("url")
+    if not media_url:
+        raise HTTPException(status_code=404, detail="Media URL not found")
+    
+    public_id = extract_public_id(media_url)
+
+    # Remove the media item from the list
+    uploaded_media.pop(index)
+    
+    if public_id:
+        response = cloudinary.api.delete_resources([public_id])
+    
+    # Update the document in MongoDB
+    result = await collection.update_one(
+        {"group_code": group_code},
+        {"$set": {media_field: uploaded_media}}
+    )
+    
+    if result.modified_count == 1:
+        return {"message": f"{media_type.capitalize()} deleted successfully"}
     else:
         raise HTTPException(status_code=500, detail="Failed to update document")
 
