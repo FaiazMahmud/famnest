@@ -152,6 +152,10 @@ class EventRetrieve(BaseModel):
     location: Optional[str] = None
     url: Optional[str] = None
     description: Optional[str] = None
+
+class CategoryCreate(BaseModel):
+    category_name: str
+    group_code: str
     
 
 @app.post("/register/")
@@ -919,6 +923,42 @@ async def rename_image(group_code: str, index: int, new_name: str):
         return {"message": "File name updated successfully"}
     else:
         raise HTTPException(status_code=500, detail="Failed to update document")
+
+
+
+@app.post("/categories/")
+async def create_category(info: CategoryCreate):
+    categories_collection = db.get_collection("Categories")
+    folders_collection = db.get_collection("Folders")
+
+    # Insert the category into the Categories collection
+    category_data = {
+        "category_name": info.category_name,
+        "group_code": info.group_code
+    }
+    category_result = await categories_collection.insert_one(category_data)
+
+    # Create default folders for the new category
+    default_folders = ["Docs", "Images", "Videos", "Music"]
+    for folder_name in default_folders:
+        folder_data = {
+            "folder_name": folder_name,
+            "category_id": str(category_result.inserted_id)
+        }
+        await folders_collection.insert_one(folder_data)
+
+    return {
+        "success": True,
+        "message": "Category created successfully with default folders.",
+        "category_id": str(category_result.inserted_id)
+    }
+
+
+@app.get("/categories/{group_code}")
+async def get_categories(group_code: str):
+    categories = await db["Categories"].find({"group_code": group_code}).to_list(length=100)
+    return [serialize_doc(category) for category in categories]
+
 
 
 
