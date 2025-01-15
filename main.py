@@ -1111,7 +1111,7 @@ async def delete_media(group_code: str, index: int, media_type: str):
 
 
 
-'''@app.post("/categories/")
+@app.post("/categories/")
 async def create_category(info: CategoryCreate):
     """
     Add a user-created category to a group.
@@ -1128,7 +1128,7 @@ async def create_category(info: CategoryCreate):
         "message": "Category created successfully.",
         "category_id": str(result.inserted_id)
     }
-
+'''
 @app.post("/categories/")
 async def create_category(info: CategoryCreate):
     """
@@ -1161,7 +1161,7 @@ async def create_category(info: CategoryCreate):
         "message": "Category created successfully with default folders.",
         "category_id": str(category_result.inserted_id)
     }
-
+'''
 
 @app.get("/categories/")
 async def get_categories(group_code: str):
@@ -1179,9 +1179,9 @@ async def get_categories(group_code: str):
         } for category in categories]
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch categories: {str(e)}")
+
+
 '''
-
-
 # Create a category with default folders
 @app.post("/categories/")
 async def create_category(info: CategoryCreate):
@@ -1228,7 +1228,7 @@ async def get_categories(group_code: str):
         ]
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch categories: {str(e)}")
-
+'''
 
 #rename the category
 
@@ -1282,7 +1282,7 @@ async def delete_category(category_id: str, body: dict = Body(...)):
     return {"success": True, "message": "Category deleted successfully."}
 
 
-'''@app.post("/create-folder/")
+@app.post("/create-folder/")
 async def create_folder(folder_info: FolderCreate):
     folders_collection = db.get_collection("Folders")
 
@@ -1302,8 +1302,8 @@ async def get_folders(category_id: str, parent_folder_id: str = None):
     query = {"category_id": category_id, "parent_folder_id": parent_folder_id}
     folders = await folders_collection.find(query).to_list(None)
     return [{"id": str(folder["_id"]), "folder_name": folder["folder_name"]} for folder in folders]
-'''
 
+'''
 # Fetch folders for a specific category
 @app.get("/folders/")
 async def get_folders(category_id: str, parent_folder_id: str = None):
@@ -1342,7 +1342,7 @@ async def create_folder(info: FolderCreate):
         "success": True,
         "message": "Folder created successfully.",
         "folder_id": str(folder_result.inserted_id)
-    }
+    }'''
 
 
 
