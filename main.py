@@ -158,14 +158,6 @@ class CategoryCreate(BaseModel):
     group_code: str
 
 
-class RenameCategoryRequest(BaseModel):
-    category_id: str
-    new_name: str
-
-
-class DeleteCategoryRequest(BaseModel):
-    category_id: str
-    
 
 @app.post("/register/")
 async def register_user(info: Register):
@@ -1127,69 +1119,43 @@ async def get_categories(group_code: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch categories: {str(e)}")
 
-# Rename a category
-@app.put("/categories/rename/")
-async def rename_category(request: RenameCategoryRequest):
-    """
-    Rename a category by its ID.
-    """
-    category_collection = db.get_collection("Categories")
+#rename the category
 
-    try:
-        category_id = ObjectId(request.category_id)
-    except:
-        raise HTTPException(status_code=400, detail="Invalid category ID")
+@app.put("/categories/{category_id}")
+async def rename_category(category_id: str, group_code: str, new_name: str):
+    """
+    Rename a category by ID and group code.
+    """
+    categories_collection = db.get_collection("Categories")
 
-    # Update the category name
-    result = await category_collection.update_one(
-        {"_id": category_id},
-        {"$set": {"category_name": request.new_name}},
+    # Find and update the category
+    update_result = await categories_collection.update_one(
+        {"_id": ObjectId(category_id), "group_code": group_code},
+        {"$set": {"category_name": new_name}}
     )
 
-    if result.modified_count == 0:
-        raise HTTPException(status_code=404, detail="Category not found or no changes made")
+    if update_result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Category not found or group mismatch.")
 
-    # Fetch and serialize the updated category
-    updated_category = await category_collection.find_one({"_id": category_id})
-    if not updated_category:
-        raise HTTPException(status_code=404, detail="Updated category not found")
-
-    serialized_category = {
-        key: str(value) if key == "_id" else value
-        for key, value in updated_category.items()
-    }
-
-    return {"success": True, "message": "Category renamed successfully", "category": serialized_category}
+    return {"success": True, "message": "Category renamed successfully."}
 
 
-# Delete a category
-@app.delete("/categories/delete/")
-async def delete_category(request: DeleteCategoryRequest):
+@app.delete("/categories/{category_id}")
+async def delete_category(category_id: str, group_code: str):
     """
-    Delete a category by its ID.
+    Delete a category by ID and group code.
     """
-    category_collection = db.get_collection("Categories")
-    folder_collection = db.get_collection("Folders")
+    categories_collection = db.get_collection("Categories")
 
-    try:
-        category_id = ObjectId(request.category_id)
-    except:
-        raise HTTPException(status_code=400, detail="Invalid category ID")
+    # Validate and delete the category
+    delete_result = await categories_collection.delete_one(
+        {"_id": ObjectId(category_id), "group_code": group_code}
+    )
 
-    # Delete the category
-    category_result = await category_collection.delete_one({"_id": category_id})
+    if delete_result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Category not found or group mismatch.")
 
-    if category_result.deleted_count == 0:
-        raise HTTPException(status_code=404, detail="Category not found")
-
-    # Also delete all folders associated with this category
-    deleted_folders = await folder_collection.delete_many({"category_id": str(category_id)})
-
-    return {
-        "success": True,
-        "message": f"Category and {deleted_folders.deleted_count} associated folders deleted successfully"
-    }
-
+    return {"success": True, "message": "Category deleted successfully."}
 
 
 
