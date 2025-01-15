@@ -1127,7 +1127,7 @@ async def create_category(info: CategoryCreate):
         "success": True,
         "message": "Category created successfully.",
         "category_id": str(result.inserted_id)
-    }'''
+    }
 
 @app.post("/categories/")
 async def create_category(info: CategoryCreate):
@@ -1179,6 +1179,56 @@ async def get_categories(group_code: str):
         } for category in categories]
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch categories: {str(e)}")
+'''
+
+
+# Create a category with default folders
+@app.post("/categories/")
+async def create_category(info: CategoryCreate):
+    categories_collection = db["Categories"]
+    folders_collection = db["Folders"]
+
+    # Create the category
+    category_data = {
+        "category_name": info.category_name,
+        "group_code": info.group_code,
+        "is_preset": False
+    }
+    category_result = await categories_collection.insert_one(category_data)
+
+    # Create default folders for the category
+    default_folders = ["Docs", "Images", "Videos", "Music"]
+    for folder_name in default_folders:
+        folder_data = {
+            "folder_name": folder_name,
+            "category_id": str(category_result.inserted_id),
+            "parent_folder_id": None,
+            "created_at": datetime.utcnow()
+        }
+        await folders_collection.insert_one(folder_data)
+
+    return {
+        "success": True,
+        "message": "Category created successfully with default folders.",
+        "category_id": str(category_result.inserted_id)
+    }
+
+# Fetch all categories for a specific group
+@app.get("/categories/")
+async def get_categories(group_code: str):
+    try:
+        categories_cursor = db["Categories"].find({"group_code": group_code})
+        categories = await categories_cursor.to_list(length=100)
+        return [
+            {
+                "id": str(category["_id"]),
+                "category_name": category["category_name"],
+                "is_preset": category.get("is_preset", False)
+            } for category in categories
+        ]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch categories: {str(e)}")
+
 
 #rename the category
 
@@ -1232,7 +1282,7 @@ async def delete_category(category_id: str, body: dict = Body(...)):
     return {"success": True, "message": "Category deleted successfully."}
 
 
-@app.post("/create-folder/")
+'''@app.post("/create-folder/")
 async def create_folder(folder_info: FolderCreate):
     folders_collection = db.get_collection("Folders")
 
@@ -1252,6 +1302,48 @@ async def get_folders(category_id: str, parent_folder_id: str = None):
     query = {"category_id": category_id, "parent_folder_id": parent_folder_id}
     folders = await folders_collection.find(query).to_list(None)
     return [{"id": str(folder["_id"]), "folder_name": folder["folder_name"]} for folder in folders]
+'''
+
+# Fetch folders for a specific category
+@app.get("/folders/")
+async def get_folders(category_id: str, parent_folder_id: str = None):
+    try:
+        query = {"category_id": category_id}
+        if parent_folder_id is not None:
+            query["parent_folder_id"] = parent_folder_id
+
+        folders_cursor = db["Folders"].find(query)
+        folders = await folders_cursor.to_list(length=100)
+        return [
+            {
+                "id": str(folder["_id"]),
+                "folder_name": folder["folder_name"],
+                "parent_folder_id": folder.get("parent_folder_id"),
+                "created_at": folder["created_at"]
+            } for folder in folders
+        ]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch folders: {str(e)}")
+
+# Create a folder
+@app.post("/folders/")
+async def create_folder(info: FolderCreate):
+    folders_collection = db["Folders"]
+
+    folder_data = {
+        "folder_name": info.folder_name,
+        "category_id": info.category_id,
+        "parent_folder_id": info.parent_folder_id,
+        "created_at": datetime.utcnow()
+    }
+    folder_result = await folders_collection.insert_one(folder_data)
+
+    return {
+        "success": True,
+        "message": "Folder created successfully.",
+        "folder_id": str(folder_result.inserted_id)
+    }
+
 
 
 @app.put("/rename-folder/")
