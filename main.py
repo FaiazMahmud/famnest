@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Depends, UploadFile, File , Form
+from fastapi import FastAPI, HTTPException, Depends, UploadFile, File , Form,APIRouter, Body
 from pydantic import BaseModel
 from motor.motor_asyncio import AsyncIOMotorClient
 from passlib.context import CryptContext
@@ -1121,11 +1121,19 @@ async def get_categories(group_code: str):
 
 #rename the category
 
+from fastapi import HTTPException, APIRouter, Body
+
 @app.put("/categories/{category_id}")
-async def rename_category(category_id: str, group_code: str, new_name: str):
+async def rename_category(category_id: str, body: dict = Body(...)):
     """
     Rename a category by ID and group code.
     """
+    group_code = body.get("group_code")
+    new_name = body.get("new_name")
+
+    if not group_code or not new_name:
+        raise HTTPException(status_code=400, detail="group_code and new_name are required.")
+
     categories_collection = db.get_collection("Categories")
 
     # Find and update the category
@@ -1141,10 +1149,15 @@ async def rename_category(category_id: str, group_code: str, new_name: str):
 
 
 @app.delete("/categories/{category_id}")
-async def delete_category(category_id: str, group_code: str):
+async def delete_category(category_id: str, body: dict = Body(...)):
     """
     Delete a category by ID and group code.
     """
+    group_code = body.get("group_code")
+
+    if not group_code:
+        raise HTTPException(status_code=400, detail="group_code is required.")
+
     categories_collection = db.get_collection("Categories")
 
     # Validate and delete the category
@@ -1157,7 +1170,3 @@ async def delete_category(category_id: str, group_code: str):
 
     return {"success": True, "message": "Category deleted successfully."}
 
-
-
-
-    
