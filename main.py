@@ -1111,7 +1111,7 @@ async def delete_media(group_code: str, index: int, media_type: str):
 
 
 
-@app.post("/categories/")
+'''@app.post("/categories/")
 async def create_category(info: CategoryCreate):
     """
     Add a user-created category to a group.
@@ -1127,7 +1127,41 @@ async def create_category(info: CategoryCreate):
         "success": True,
         "message": "Category created successfully.",
         "category_id": str(result.inserted_id)
+    }'''
+
+@app.post("/categories/")
+async def create_category(info: CategoryCreate):
+    """
+    Add a user-created category to a group and create default folders.
+    """
+    categories_collection = db.get_collection("Categories")
+    folders_collection = db.get_collection("Folders")
+
+    # Create the category
+    category_data = {
+        "category_name": info.category_name,
+        "group_code": info.group_code,
+        "is_preset": False  # User-created category
     }
+    category_result = await categories_collection.insert_one(category_data)
+
+    # Create default folders for the new category
+    default_folders = ["Docs", "Images", "Videos", "Music"]
+    for folder_name in default_folders:
+        folder_data = {
+            "folder_name": folder_name,
+            "category_id": str(category_result.inserted_id),
+            "parent_folder_id": None ,
+            "created_at": datetime.utcnow(),# Default folders have no parent
+        }
+        await folders_collection.insert_one(folder_data)
+
+    return {
+        "success": True,
+        "message": "Category created successfully with default folders.",
+        "category_id": str(category_result.inserted_id)
+    }
+
 
 @app.get("/categories/")
 async def get_categories(group_code: str):
