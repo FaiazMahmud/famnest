@@ -1110,7 +1110,7 @@ async def delete_media(group_code: str, index: int, media_type: str):
         raise HTTPException(status_code=500, detail="Failed to update document")
 
 
-
+'''
 @app.post("/categories/")
 async def create_category(info: CategoryCreate):
     """
