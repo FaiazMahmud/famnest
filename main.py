@@ -239,7 +239,7 @@ def serialize_doc(doc):
     return {key: value for key, value in doc.items() if key != "_id"}
 
 
-'''
+
 @app.post("/create-group/")
 async def create_group(info: GroupCreate):
     group_collection = db.get_collection("Groups")
@@ -307,8 +307,8 @@ async def create_group(info: GroupCreate):
             "group_code": info.group_code,
             "created_at": datetime.utcnow().isoformat(),
         }
-    }'''
-
+    }
+'''
 @app.post("/create-group/")
 async def create_group(info: GroupCreate):
     group_collection = db.get_collection("Groups")
@@ -360,7 +360,7 @@ async def create_group(info: GroupCreate):
 
     return {"success": True, "message": "Group created successfully."}
 
-
+'''
 
 @app.post("/get-user-data/")
 async def get_user_data(info: EmailRequest):
