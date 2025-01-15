@@ -158,6 +158,24 @@ class CategoryCreate(BaseModel):
     group_code: str
 
 
+class FolderCreate(BaseModel):
+    folder_name: str
+    category_id: str
+    parent_folder_id: str = None  # Optional parent folder for nested folders
+
+class FileUpload(BaseModel):
+    file_name: str
+    folder_id: str
+    file_url: str
+
+class RenameFolder(BaseModel):
+    folder_id: str
+    new_name: str
+
+class DeleteFolder(BaseModel):
+    folder_id: str
+
+
 
 @app.post("/register/")
 async def register_user(info: Register):
@@ -220,51 +238,8 @@ def serialize_doc(doc):
         doc["created_at"] = doc["created_at"].isoformat()
     return {key: value for key, value in doc.items() if key != "_id"}
 
-'''@app.post("/create-group/")
-async def create_group(info: GroupCreate):
-    group_collection = db.get_collection("Groups")
-    user_collection = db.get_collection("Users")
 
-    existing_group = await group_collection.find_one({"group_code": info.group_code})
-    if existing_group:
-        raise HTTPException(status_code=400, detail="Group code already exists.")
-
-    group_data = {
-        "group_name": info.group_name,
-        "group_code": info.group_code,
-        "created_at": datetime.utcnow(),
-        "members": [{"email": info.email, "joined_at": datetime.utcnow()}]
-    }
-
-    await group_collection.insert_one(group_data)
-
-    user = await user_collection.find_one({"email": info.email})
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found.")
-
-    user_groups = user.get("groups", [])
-    user_groups.append({"group_name": info.group_name, "group_code": info.group_code, "created_at": datetime.utcnow()})
-
-    current_group = user.get("current_group")
-    if not current_group:
-        current_group = {"group_name": info.group_name, "group_code": info.group_code}
-
-    await user_collection.update_one(
-        {"email": info.email},
-        {"$set": {"groups": user_groups, "current_group": current_group}}
-    )
-
-    return {
-         "success": True,
-         "message": "Group created successfully.",
-         "group": {
-            "group_name": info.group_name,
-            "group_code": info.group_code,
-            "created_at": datetime.utcnow().isoformat(),
-             }
-    }'''
-
-
+'''
 @app.post("/create-group/")
 async def create_group(info: GroupCreate):
     group_collection = db.get_collection("Groups")
@@ -332,7 +307,59 @@ async def create_group(info: GroupCreate):
             "group_code": info.group_code,
             "created_at": datetime.utcnow().isoformat(),
         }
+    }'''
+
+@app.post("/create-group/")
+async def create_group(info: GroupCreate):
+    group_collection = db.get_collection("Groups")
+    user_collection = db.get_collection("Users")
+    categories_collection = db.get_collection("Categories")
+    folders_collection = db.get_collection("Folders")
+
+    # Check if the group already exists
+    existing_group = await group_collection.find_one({"group_code": info.group_code})
+    if existing_group:
+        raise HTTPException(status_code=400, detail="Group code already exists.")
+
+    # Insert the group
+    group_data = {
+        "group_name": info.group_name,
+        "group_code": info.group_code,
+        "created_at": datetime.utcnow(),
+        "members": [{"email": info.email, "joined_at": datetime.utcnow()}],
     }
+    await group_collection.insert_one(group_data)
+
+    # Update user groups
+    user = await user_collection.find_one({"email": info.email})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found.")
+    user_groups = user.get("groups", [])
+    user_groups.append({"group_name": info.group_name, "group_code": info.group_code})
+    await user_collection.update_one({"email": info.email}, {"$set": {"groups": user_groups}})
+
+    # Create default categories and folders
+    default_categories = ["Education", "Finance", "Medical"]
+    default_folders = ["Docs", "Images", "Videos", "Music"]
+
+    for category_name in default_categories:
+        category = {
+            "category_name": category_name,
+            "group_code": info.group_code,
+            "is_preset": True,
+        }
+        category_result = await categories_collection.insert_one(category)
+        for folder_name in default_folders:
+            folder = {
+                "folder_name": folder_name,
+                "category_id": str(category_result.inserted_id),
+                "parent_folder_id": None,
+                "created_at": datetime.utcnow(),
+            }
+            await folders_collection.insert_one(folder)
+
+    return {"success": True, "message": "Group created successfully."}
+
 
 
 @app.post("/get-user-data/")
@@ -1170,3 +1197,56 @@ async def delete_category(category_id: str, body: dict = Body(...)):
 
     return {"success": True, "message": "Category deleted successfully."}
 
+
+@app.post("/create-folder/")
+async def create_folder(folder_info: FolderCreate):
+    folders_collection = db.get_collection("Folders")
+
+    folder_data = {
+        "folder_name": folder_info.folder_name,
+        "category_id": folder_info.category_id,
+        "parent_folder_id": folder_info.parent_folder_id,
+        "created_at": datetime.utcnow(),
+    }
+    result = await folders_collection.insert_one(folder_data)
+    return {"success": True, "folder_id": str(result.inserted_id)}
+
+
+@app.get("/folders/{category_id}/")
+async def get_folders(category_id: str, parent_folder_id: str = None):
+    folders_collection = db.get_collection("Folders")
+    query = {"category_id": category_id, "parent_folder_id": parent_folder_id}
+    folders = await folders_collection.find(query).to_list(None)
+    return [{"id": str(folder["_id"]), "folder_name": folder["folder_name"]} for folder in folders]
+
+
+@app.put("/rename-folder/")
+async def rename_folder(rename_info: RenameFolder):
+    folders_collection = db.get_collection("Folders")
+
+    result = await folders_collection.update_one(
+        {"_id": ObjectId(rename_info.folder_id)},
+        {"$set": {"folder_name": rename_info.new_name}}
+    )
+
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Folder not found.")
+    return {"success": True, "message": "Folder renamed successfully."}
+
+@app.delete("/delete-folder/")
+async def delete_folder(delete_info: DeleteFolder):
+    folders_collection = db.get_collection("Folders")
+    files_collection = db.get_collection("Files")
+
+    folder_id = delete_info.folder_id
+
+    # Check for subfolders or files
+    subfolders = await folders_collection.find({"parent_folder_id": folder_id}).to_list(None)
+    files = await files_collection.find({"folder_id": folder_id}).to_list(None)
+    if subfolders or files:
+        raise HTTPException(status_code=400, detail="Folder contains subfolders or files.")
+
+    result = await folders_collection.delete_one({"_id": ObjectId(folder_id)})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Folder not found.")
+    return {"success": True, "message": "Folder deleted successfully."}
