@@ -1161,7 +1161,7 @@ async def create_category(info: CategoryCreate):
         "message": "Category created successfully with default folders.",
         "category_id": str(category_result.inserted_id)
     }
-'''
+
 
 @app.get("/categories/")
 async def get_categories(group_code: str):
@@ -1342,7 +1342,7 @@ async def create_folder(info: FolderCreate):
         "success": True,
         "message": "Folder created successfully.",
         "folder_id": str(folder_result.inserted_id)
-    }'''
+    }
 
 
 
