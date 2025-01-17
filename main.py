@@ -158,13 +158,15 @@ class CategoryCreate(BaseModel):
     group_code: str
     category_name: str
 
+class RenameCategory(BaseModel):
+    group_code: str
+    new_name: str
+
 class CategoryResponse(BaseModel):
     id: str
     category_name: str
     is_preset: bool
     created_at: Optional[str] = None
-
-
 
 class FolderCreate(BaseModel):
     folder_name: str
@@ -1199,7 +1201,7 @@ async def get_categories(group_code: str):
 '''
 
 #newwwwwwwww
-@app.post("/categories/")
+
 @app.post("/categories/", response_model=dict)
 async def create_category(info: CategoryCreate):
     """
@@ -1208,21 +1210,35 @@ async def create_category(info: CategoryCreate):
     categories_collection = db.get_collection("Categories")
     folders_collection = db.get_collection("Folders")
 
-    # Create the category
+    # Check if the group exists in the Categories collection
+    group = await categories_collection.find_one({"group_code": info.group_code})
+
+    if not group:
+        # If group doesn't exist, create a new document for the group
+        group_data = {
+            "group_code": info.group_code,
+            "categories": []
+        }
+        await categories_collection.insert_one(group_data)
+
+    # Add the new category to the group's categories array
     category_data = {
         "category_name": info.category_name,
-        "group_code": info.group_code,
         "is_preset": False,  # User-created category
         "created_at": datetime.utcnow(),
     }
-    category_result = await categories_collection.insert_one(category_data)
+    category_id = ObjectId()
+    await categories_collection.update_one(
+        {"group_code": info.group_code},
+        {"$push": {"categories": {"_id": category_id, **category_data}}}
+    )
 
     # Create default folders for the new category
     default_folders = ["Docs", "Images", "Videos", "Music"]
     for folder_name in default_folders:
         folder_data = {
             "folder_name": folder_name,
-            "category_id": str(category_result.inserted_id),
+            "category_id": str(category_id),
             "parent_folder_id": None,  # Default folders have no parent
             "created_at": datetime.utcnow(),
         }
@@ -1231,7 +1247,7 @@ async def create_category(info: CategoryCreate):
     return {
         "success": True,
         "message": "Category created successfully with default folders.",
-        "category_id": str(category_result.inserted_id),
+        "category_id": str(category_id),
     }
 
 @app.get("/categories/", response_model=dict)
@@ -1243,11 +1259,13 @@ async def get_categories(group_code: str):
     categories_collection = db.get_collection("Categories")
 
     try:
-        # Fetch categories by group_code
-        categories_cursor = categories_collection.find({"group_code": group_code})
-        categories = await categories_cursor.to_list(length=100)
+        # Fetch the group document by group_code
+        group = await categories_collection.find_one({"group_code": group_code})
 
-        # Serialize the documents and return
+        if not group:
+            return {"success": True, "categories": []}  # Return empty if group not found
+
+        # Serialize the categories within the group
         serialized_categories = [
             {
                 "id": str(category["_id"]),
@@ -1256,18 +1274,13 @@ async def get_categories(group_code: str):
                 "created_at": category["created_at"].isoformat()
                 if "created_at" in category else None,
             }
-            for category in categories
+            for category in group.get("categories", [])
         ]
 
         return {"success": True, "categories": serialized_categories}
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch categories: {str(e)}")
-
-
-
-
-
 
 
 #rename the category
