@@ -1402,7 +1402,7 @@ async def upload_file(
         "file_type": result.get("resource_type"),
         "created_at": datetime.utcnow(),
     }
-    result = files_collection.insert_one(file_data)
+    result =await files_collection.insert_one(file_data)
 
     return {"success": True, "file_id": str(result.inserted_id)}
 
