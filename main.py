@@ -153,9 +153,17 @@ class EventRetrieve(BaseModel):
     url: Optional[str] = None
     description: Optional[str] = None
 
+# Pydantic Models
 class CategoryCreate(BaseModel):
-    category_name: str
     group_code: str
+    category_name: str
+
+class CategoryResponse(BaseModel):
+    id: str
+    category_name: str
+    is_preset: bool
+    created_at: Optional[str] = None
+
 
 
 class FolderCreate(BaseModel):
@@ -1192,6 +1200,7 @@ async def get_categories(group_code: str):
 
 #newwwwwwwww
 @app.post("/categories/")
+@app.post("/categories/", response_model=dict)
 async def create_category(info: CategoryCreate):
     """
     Add a user-created category to a group and create default folders.
@@ -1225,8 +1234,7 @@ async def create_category(info: CategoryCreate):
         "category_id": str(category_result.inserted_id),
     }
 
-#newwwwwwwwwwwwwwwwwwwwww
-@app.get("/categories/")
+@app.get("/categories/", response_model=dict)
 async def get_categories(group_code: str):
     """
     Fetch categories for a specific group.
@@ -1235,11 +1243,9 @@ async def get_categories(group_code: str):
     categories_collection = db.get_collection("Categories")
 
     try:
-        print(f"Fetching categories for group_code: {group_code}")
         # Fetch categories by group_code
         categories_cursor = categories_collection.find({"group_code": group_code})
         categories = await categories_cursor.to_list(length=100)
-        print(f"Fetched categories: {categories}")
 
         # Serialize the documents and return
         serialized_categories = [
@@ -1247,7 +1253,8 @@ async def get_categories(group_code: str):
                 "id": str(category["_id"]),
                 "category_name": category["category_name"],
                 "is_preset": category.get("is_preset", False),
-                "created_at": category["created_at"].isoformat() if "created_at" in category else None,
+                "created_at": category["created_at"].isoformat()
+                if "created_at" in category else None,
             }
             for category in categories
         ]
@@ -1255,9 +1262,7 @@ async def get_categories(group_code: str):
         return {"success": True, "categories": serialized_categories}
 
     except Exception as e:
-        print(f"Error fetching categories: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to fetch categories: {str(e)}")
-
 
 
 
