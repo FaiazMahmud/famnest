@@ -1335,6 +1335,7 @@ async def delete_category(category_id: str, body: dict = Body(...)):
     return {"success": True, "message": "Category deleted successfully."}
 
 
+#previous
 @app.post("/create-folder/")
 async def create_folder(folder_info: FolderCreate):
     folders_collection = db.get_collection("Folders")
@@ -1348,10 +1349,73 @@ async def create_folder(folder_info: FolderCreate):
     result = await folders_collection.insert_one(folder_data)
     return {"success": True, "folder_id": str(result.inserted_id)}
 
-
+#previous
 @app.get("/folders/{category_id}/")
 async def get_folders(category_id: str, parent_folder_id: str = None):
     folders_collection = db.get_collection("Folders")
     query = {"category_id": category_id, "parent_folder_id": parent_folder_id}
     folders = await folders_collection.find(query).to_list(None)
     return [{"id": str(folder["_id"]), "folder_name": folder["folder_name"]} for folder in folders]
+
+
+
+
+
+
+@app.post("/upload-file/")
+async def upload_file(
+    file: UploadFile,
+    category_id: str = Form(...),
+    folder_id: str = Form(...),
+):
+    files_collection = db.get_collection("Files")
+
+    try:
+        # Determine the resource type
+        resource_type = "raw"
+        if file.content_type.startswith("image"):
+            resource_type = "image"
+        elif file.content_type.startswith("video"):
+            resource_type = "video"
+
+        # Upload file to Cloudinary
+        result = upload(
+            file.file,
+            resource_type=resource_type,
+            folder="DocumentStore",
+        )
+
+        # Store metadata in MongoDB
+        file_metadata = {
+            "file_name": file.filename,
+            "content_type": file.content_type,
+            "cloudinary_url": result["secure_url"],
+            "public_id": result["public_id"],
+            "category_id": category_id,
+            "folder_id": folder_id,
+            "uploaded_at": datetime.utcnow(),
+        }
+
+        db_result = await files_collection.insert_one(file_metadata)
+        return {"success": True, "file_id": str(db_result.inserted_id)}
+
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@app.get("/files/{folder_id}/")
+async def get_files(folder_id: str):
+    files_collection = db.get_collection("Files")
+    try:
+        files = await files_collection.find({"folder_id": folder_id}).to_list(None)
+        return [
+            {
+                "file_name": file["file_name"],
+                "cloudinary_url": file["cloudinary_url"],
+                "content_type": file["content_type"],
+                "uploaded_at": file["uploaded_at"],
+            }
+            for file in files
+        ]
+    except Exception as e:
+        return {"success": False, "error": str(e)}
