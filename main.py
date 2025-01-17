@@ -1228,35 +1228,28 @@ async def create_category(info: CategoryCreate):
 #newwwwwwwwwwwwwwwwwwwwww
 @app.get("/categories/")
 async def get_categories(group_code: str):
-    """
-    Fetch categories for a specific group.
-    Includes both preset and user-created categories.
-    """
     categories_collection = db.get_collection("Categories")
 
     try:
-        # Fetch categories by group_code
         categories_cursor = categories_collection.find({"group_code": group_code})
         categories = await categories_cursor.to_list(length=100)
 
-        # Serialize the documents and return
         serialized_categories = [
             {
                 "id": str(category["_id"]),
                 "category_name": category["category_name"],
                 "is_preset": category.get("is_preset", False),
-                "created_at": category["created_at"].isoformat()
-                if "created_at" in category else None,
+                "created_at": category["created_at"].isoformat() if "created_at" in category else None,
             }
             for category in categories
         ]
 
+        print(f"Serialized Categories: {serialized_categories}")
         return {"success": True, "categories": serialized_categories}
 
     except Exception as e:
+        print(f"Error fetching categories: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to fetch categories: {str(e)}")
-
-
 
 
 
