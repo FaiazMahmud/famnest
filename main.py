@@ -185,6 +185,16 @@ class RenameFolder(BaseModel):
 class DeleteFolder(BaseModel):
     folder_id: str
 
+# Base Model for File Upload
+class FileUploadModel(BaseModel):
+    category_id: str
+    folder_id: str
+    file_name: str
+    cloudinary_url: str
+    public_id: str
+    file_type: str
+    created_at: datetime
+
 
 
 @app.post("/register/")
@@ -1357,6 +1367,64 @@ async def get_folders(category_id: str, parent_folder_id: str = None):
     folders = await folders_collection.find(query).to_list(None)
     return [{"id": str(folder["_id"]), "folder_name": folder["folder_name"]} for folder in folders]
 
+
+# Upload file API
+@app.post("/upload-file/")
+async def upload_file(
+    category_id: str = Form(...),
+    folder_id: str = Form(...),
+    file: UploadFile = File(...)
+):
+    categories_collection = db.get_collection("Categories")
+    folders_collection = db.get_collection("Folders")
+    files_collection = db.get_collection("Files")
+
+    # Validate category and folder
+    if not categories_collection.find_one({"_id": ObjectId(category_id)}):
+        raise HTTPException(status_code=404, detail="Category not found")
+
+    if not folders_collection.find_one({"_id": ObjectId(folder_id)}):
+        raise HTTPException(status_code=404, detail="Folder not found")
+
+    # Upload to Cloudinary
+    try:
+        result = cloudinary.uploader.upload(file.file, resource_type="auto")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Cloudinary upload failed: {str(e)}")
+
+    # Save metadata to MongoDB
+    file_data = {
+        "file_name": file.filename,
+        "category_id": category_id,
+        "folder_id": folder_id,
+        "cloudinary_url": result.get("secure_url"),
+        "public_id": result.get("public_id"),
+        "file_type": result.get("resource_type"),
+        "created_at": datetime.utcnow(),
+    }
+    result = files_collection.insert_one(file_data)
+
+    return {"success": True, "file_id": str(result.inserted_id)}
+
+# Fetch files API
+@app.get("/files/{folder_id}/")
+async def get_files(folder_id: str):
+    categories_collection = db.get_collection("Categories")
+    folders_collection = db.get_collection("Folders")
+    files_collection = db.get_collection("Files")
+
+    files = files_collection.find({"folder_id": folder_id})
+    files_list = [
+        {
+            "id": str(file["_id"]),
+            "file_name": file["file_name"],
+            "cloudinary_url": file["cloudinary_url"],
+            "file_type": file["file_type"],
+            "created_at": file["created_at"].isoformat()
+        }
+        for file in files
+    ]
+    return files_list
 
 
 
