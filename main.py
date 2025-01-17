@@ -1146,7 +1146,7 @@ async def create_category(info: CategoryCreate):
         "message": "Category created successfully.",
         "category_id": str(result.inserted_id)
     }
-
+'''
 @app.post("/categories/")
 async def create_category(info: CategoryCreate):
     """
@@ -1198,8 +1198,8 @@ async def get_categories(group_code: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch categories: {str(e)}")
 
-'''
 
+'''
 #newwwwwwwww
 
 @app.post("/categories/", response_model=dict)
@@ -1281,7 +1281,7 @@ async def get_categories(group_code: str):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch categories: {str(e)}")
-
+'''
 
 #rename the category
 
