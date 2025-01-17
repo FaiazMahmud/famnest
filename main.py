@@ -1362,7 +1362,7 @@ async def get_folders(category_id: str, parent_folder_id: str = None):
 
 
 
-@app.post("/upload-file/")
+'''@app.post("/upload-file/")
 async def upload_file(
     file: UploadFile,
     category_id: str = Form(...),
@@ -1419,3 +1419,4 @@ async def get_files(folder_id: str):
         ]
     except Exception as e:
         return {"success": False, "error": str(e)}
+'''
