@@ -1413,7 +1413,9 @@ async def get_files(folder_id: str):
     folders_collection = db.get_collection("Folders")
     files_collection = db.get_collection("Files")
 
-    files = files_collection.find({"folder_id": folder_id})
+    files_cursor = files_collection.find({"folder_id": folder_id})
+    files = await files_cursor.to_list(length=None)  # Convert the cursor to a list
+
     files_list = [
         {
             "id": str(file["_id"]),
@@ -1425,6 +1427,7 @@ async def get_files(folder_id: str):
         for file in files
     ]
     return files_list
+
 
 
 
