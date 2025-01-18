@@ -1239,10 +1239,13 @@ async def upload_stories(group_code: str, title: str, content: str):
     try:
         # Access the collection
         groups_collection = db.get_collection("TimeCapsuleMediaFiles")
-        
+        print(group_code)
+        print(title)
+        print(content)
         # Check if group exists
         user = await groups_collection.find_one({"group_code": group_code})
         if user:
+            print("hello i am here")
             # Push the story details to the existing group
             result = await groups_collection.update_one(
                 {"group_code": group_code},
@@ -1259,6 +1262,7 @@ async def upload_stories(group_code: str, title: str, content: str):
                 raise HTTPException(status_code=500, detail="Failed to update group with story details")
         else:
             # Create a new group with the story details
+            print("no i am no here)
             new_user = {
                 "group_code": group_code,
                 "uploaded_stories": [
