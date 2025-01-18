@@ -1234,19 +1234,70 @@ async def delete_media(group_code: str, index: int, media_type: str):
 #     else:
 #         raise HTTPException(status_code=500, detail="Failed to update story")
 
+# @app.post("/upload-story/")
+# async def upload_stories(group_code: str, title: str, content: str):
+#     try:
+#         # Access the collection
+#         groups_collection = db.get_collection("TimeCapsuleMediaFiles")
+#         print(group_code)
+#         print(title)
+#         print(content)
+#         # Check if group exists
+#         user = await groups_collection.find_one({"group_code": group_code})
+#         if user:
+#             print("hello i am here")
+#             # Push the story details to the existing group
+#             result = await groups_collection.update_one(
+#                 {"group_code": group_code},
+#                 {
+#                     "$push": {
+#                         "uploaded_stories": {
+#                             "title": title,
+#                             "content": content
+#                         }
+#                     }
+#                 }
+#             )
+#             if result.modified_count == 0:
+#                 raise HTTPException(status_code=500, detail="Failed to update group with story details")
+#         else:
+#             # Create a new group with the story details
+#             print("no i am no here")
+#             new_user = {
+#                 "group_code": group_code,
+#                 "uploaded_stories": [
+#                     {
+#                         "title": title,
+#                         "content": content
+#                     }
+#                 ]
+#             }
+#             await groups_collection.insert_one(new_user)
+
+#         return {"message": "Story uploaded successfully"}
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=str(e))
+
+class StoryRequest(BaseModel):
+    group_code: str
+    title: str
+    content: str
+
 @app.post("/upload-story/")
-async def upload_stories(group_code: str, title: str, content: str):
+async def upload_stories(request: StoryRequest):
+    group_code = request.group_code
+    title = request.title
+    content = request.content
+
     try:
         # Access the collection
         groups_collection = db.get_collection("TimeCapsuleMediaFiles")
-        print(group_code)
-        print(title)
-        print(content)
+        print(f"group_code: {group_code}, title: {title}, content: {content}")
+
         # Check if group exists
         user = await groups_collection.find_one({"group_code": group_code})
         if user:
-            print("hello i am here")
-            # Push the story details to the existing group
+            print("Group exists, adding story")
             result = await groups_collection.update_one(
                 {"group_code": group_code},
                 {
@@ -1261,8 +1312,7 @@ async def upload_stories(group_code: str, title: str, content: str):
             if result.modified_count == 0:
                 raise HTTPException(status_code=500, detail="Failed to update group with story details")
         else:
-            # Create a new group with the story details
-            print("no i am no here")
+            print("Group does not exist, creating new group")
             new_user = {
                 "group_code": group_code,
                 "uploaded_stories": [
@@ -1277,6 +1327,7 @@ async def upload_stories(group_code: str, title: str, content: str):
         return {"message": "Story uploaded successfully"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.delete("/delete-story/{group_code}/{index}")
 async def delete_story(group_code: str, index: int):
