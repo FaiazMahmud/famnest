@@ -1262,7 +1262,7 @@ async def upload_stories(group_code: str, title: str, content: str):
                 raise HTTPException(status_code=500, detail="Failed to update group with story details")
         else:
             # Create a new group with the story details
-            print("no i am no here)
+            print("no i am no here")
             new_user = {
                 "group_code": group_code,
                 "uploaded_stories": [
