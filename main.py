@@ -980,15 +980,15 @@ async def get_mediafiles(group_code: str, media_type: str):
         # If the group is not found, return an empty list
         if not group:
             return {f"{media_type}s": []}
-        print("i am here");
-        print(group_code);
         # Determine which type of media to return (either images or videos)
         if media_type == "image":
             media_files = group.get("uploaded_images", [])
         elif media_type == "video":
             media_files = group.get("uploaded_videos", [])
+        elif media_type == "storie":
+            media_files = group.get("uploaded_stories", [])
         else:
-            raise HTTPException(status_code=400, detail="Invalid media type. Use 'image' or 'video'.")
+            raise HTTPException(status_code=400, detail="Invalid media type. Use 'image' or 'video' or 'stories'.")
         return {f"{media_type}s": media_files}
     
     except Exception as e:
