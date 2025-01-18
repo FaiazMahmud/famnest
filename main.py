@@ -1013,7 +1013,7 @@ def extract_public_id(url: str) -> str:
 
         return public_id
     raise ValueError("Invalid Cloudinary URL")
-    
+
 # @app.delete("/delete-image/{group_code}/{index}")
 # async def delete_image(group_code: str, index: int):
 #     collection = db.get_collection("TimeCapsuleImages")
@@ -1136,6 +1136,105 @@ async def delete_media(group_code: str, index: int, media_type: str):
         return {"message": f"{media_type.capitalize()} deleted successfully"}
     else:
         raise HTTPException(status_code=500, detail="Failed to update document")
+
+@app.post("/upload-story/{title}/{content}/{group_code}")
+async def upload_stories( title : str , content : str , group_code : str):
+    try:
+        # Check if group exists in the database
+        groups_collection = db.get_collection("TimeCapsuleMediaFiles")
+        user = await groups_collection.find_one({"group_code": group_code})  # Use await here
+
+        if user:
+            # If group exists, push the file details to the existing document
+            result = await groups_collection.update_one(  # Use await here
+                {"group_code": group_code},
+                {
+                    "$push": {
+                        f"uploaded_stories": {
+                            "title": title,
+                            f"content": content
+                        }
+                    }
+                }
+            )
+            if result.modified_count == 0:
+                raise HTTPException(status_code=500, detail=f"Failed to update group with story details")
+            print(f"{resource_type.capitalize()} added to existing user.")
+        else:
+            # If group does not exist, create a new user and add the file details
+            new_user = {
+                "group_code": group_code,
+                f"uploaded_stories": [
+                     "$push": {
+                        f"uploaded_stories": {
+                            "title": title,
+                            f"content": content
+                        }
+                    }
+                ]
+            }
+            await groups_collection.insert_one(new_user)  # Use await here
+            print(f"New user created and story details added.")
+
+        # Return the response directly as a dictionary
+        return {"message": "Story uploaded successfully"}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+        
+@app.delete("/delete-story/{group_code}/{index}/")
+async def delete_story(group_code: str, index: int):
+    # Define the correct collection and media field
+    collection = db.get_collection("TimeCapsuleMediaFiles")
+    media_field = f"uploaded_stories"  # Either 'uploaded_images' or 'uploaded_videos'
+    
+    # Find the document to ensure it exists
+    document = await collection.find_one({"group_code": group_code})
+    if not document:
+        raise HTTPException(status_code=404, detail="Group not found")
+    
+    # Check if the index is valid for the selected media type
+    uploaded_media = document.get(media_field, [])
+    if index < 0 or index >= len(uploaded_media):
+        raise HTTPException(status_code=400, detail="Invalid index")
+
+    # Remove the media item from the list
+    uploaded_media.pop(index)
+    
+    # Update the document in MongoDB
+    result = await collection.update_one(
+        {"group_code": group_code},
+        {"$set": {media_field: uploaded_media}}
+    )
+    
+    if result.modified_count == 1:
+        return {"message": "story deleted successfully"}
+    else:
+        raise HTTPException(status_code=500, detail="Failed to delete story")
+
+@app.put("/update-story/{group_code}/{index}/{title}/{content}")
+async def update_story(group_code: str, index: int, title : str, content : str):
+    collection = db.get_collection("TimeCapsuleMediaFiles")
+    # Find the document to ensure it exists
+    document = await collection.find_one({"group_code": group_code})
+    if not document:
+        raise HTTPException(status_code=404, detail="Group not found")
+    
+    media_field = f"uploaded_stories"  # Either 'uploaded_images' or 'uploaded_videos'
+    
+    # Check if the index is valid for the chosen media type
+    if index < 0 or index >= len(document.get(media_field, [])):
+        raise HTTPException(status_code=400, detail="Invalid index")
+    
+    result = await collection.update_one(
+        {"group_code": group_code},
+        {"$set": {f"{media_field}.{index}.title": title}}
+    )
+    
+    if result.modified_count == 1:
+        return {"message": "story updated successfully"}
+    else:
+        raise HTTPException(status_code=500, detail="Failed to update story")
 
 '''
 #previous
