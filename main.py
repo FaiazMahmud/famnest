@@ -1162,14 +1162,12 @@ async def upload_stories( title : str , content : str , group_code : str):
             print(f"{resource_type.capitalize()} added to existing user.")
         else:
             # If group does not exist, create a new user and add the file details
-            new_user = {
+             new_user = {
                 "group_code": group_code,
-                f"uploaded_stories": [
-                     "$push": {
-                        f"uploaded_stories": {
-                            "title": title,
-                            f"content": content
-                        }
+                f"uploaded_{resource_type}s": [
+                    {
+                        "title": title,
+                        f"content": content
                     }
                 ]
             }
