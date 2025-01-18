@@ -1355,7 +1355,7 @@ async def delete_story(group_code: str, index: int):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.put("/update-story/{group_code}/{index}")
+@app.put("/update-story/{group_code}/{index}/{title}/{content}")
 async def update_story(group_code: str, index: int, title: str, content: str):
     try:
         collection = db.get_collection("TimeCapsuleMediaFiles")
