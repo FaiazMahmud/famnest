@@ -1234,15 +1234,6 @@ async def delete_media(group_code: str, index: int, media_type: str):
 #     else:
 #         raise HTTPException(status_code=500, detail="Failed to update story")
 
-from fastapi import FastAPI, HTTPException
-from pymongo import MongoClient
-
-app = FastAPI()
-
-# MongoDB client setup
-client = MongoClient("mongodb_connection_string")
-db = client.get_database("your_database_name")
-
 @app.post("/upload-story/")
 async def upload_stories(group_code: str, title: str, content: str):
     try:
