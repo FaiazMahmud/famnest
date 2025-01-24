@@ -37,6 +37,9 @@ if not MONGO_URI:
 
 client = AsyncIOMotorClient(MONGO_URI)
 db = client['FamNest']
+budget_collection = db['budget']
+expense_collection = db['expense']
+
 
 # Cloudinary configuration
 CLOUDINARY_CLOUD_NAME = os.getenv("CLOUDINARY_CLOUD_NAME")
@@ -194,6 +197,20 @@ class FileUploadModel(BaseModel):
     public_id: str
     file_type: str
     created_at: datetime
+
+#Base Model for expense_tracking 
+class Budget(BaseModel):
+    category: str
+    month: datetime
+    amount: float
+    spent: float = 0.0
+    groupCode: str
+
+class Expense(BaseModel):
+    category: str
+    date: datetime
+    amount: float
+    groupCode: str
 
 
 
@@ -773,6 +790,125 @@ async def update_event(event_id: str, event: EventCreate):
         raise HTTPException(status_code=404, detail="Event not found.")
 
     return {"success": True, "message": "Event updated successfully."}
+
+
+
+
+@app.post("/budget")
+async def upload_budget(budget: Budget):
+    """
+    Uploads a new budget to MongoDB.
+    """
+    budget_dict = budget.dict()
+    result = await budget_collection.insert_one(budget_dict)
+    if result.inserted_id:
+        return {"message": "Budget uploaded successfully.", "id": str(result.inserted_id)}
+    raise HTTPException(status_code=500, detail="Failed to upload budget.")
+
+@app.post("/expense")
+async def upload_expense(expense: Expense):
+    """
+    Uploads a new expense to MongoDB and updates the corresponding budget's 'spent' field.
+    """
+    expense_dict = expense.dict()
+    result = await expense_collection.insert_one(expense_dict)
+    if result.inserted_id:
+        # Update the corresponding budget
+        update_result = await budget_collection.update_one(
+            {
+                "category": expense.category,
+                "month": {"$gte": datetime(expense.date.year, expense.date.month, 1),
+                          "$lt": datetime(expense.date.year, expense.date.month + 1, 1)},
+                "groupCode": expense.groupCode
+            },
+            {"$inc": {"spent": expense.amount}}
+        )
+        if update_result.modified_count > 0:
+            return {"message": "Expense uploaded successfully and budget updated."}
+        return {"message": "Expense uploaded successfully, but no matching budget was updated."}
+    raise HTTPException(status_code=500, detail="Failed to upload expense.")
+
+@app.get("/budget", response_model=List[Budget])
+async def fetch_budgets(groupCode: str):
+    """
+    Fetches all budgets for the specified group code from MongoDB.
+    """
+    budgets = await budget_collection.find({"groupCode": groupCode}).to_list(length=None)
+    if budgets:
+        return budgets
+    raise HTTPException(status_code=404, detail="No budgets found for the group code.")
+
+@app.get("/expense", response_model=List[Expense])
+async def fetch_expenses(groupCode: str):
+    """
+    Fetches all expenses for the specified group code from MongoDB.
+    """
+    expenses = await expense_collection.find({"groupCode": groupCode}).to_list(length=None)
+    if expenses:
+        return expenses
+    raise HTTPException(status_code=404, detail="No expenses found for the group code.")
+
+# def get_budgets_by_group(group_code: str):
+#     return [budget for budget in budgets_db if budget.get("groupCode") == group_code]
+
+# def get_expenses_by_group(group_code: str):
+#     return [expense for expense in expenses_db if expense.get("groupCode") == group_code]
+
+# # Endpoints
+# @app.post("/budget")
+# async def upload_budget(budget: Budget, groupCode: str = Query(...)):
+#     """
+#     Uploads a new budget.
+#     """
+#     budget_data = budget.dict()
+#     budget_data["groupCode"] = groupCode
+#     budgets_db.append(budget_data)
+#     return {"message": "Budget uploaded successfully."}
+
+# @app.post("/expense")
+# async def upload_expense(expense: Expense, groupCode: str = Query(...)):
+#     """
+#     Uploads a new expense and updates the corresponding budget.
+#     """
+#     expense_data = expense.dict()
+#     expense_data["groupCode"] = groupCode
+#     expenses_db.append(expense_data)
+
+#     # Update spent amount in the corresponding budget
+#     for budget in budgets_db:
+#         if (
+#             budget["category"] == expense.category and
+#             budget["month"].month == expense.date.month and
+#             budget["month"].year == expense.date.year and
+#             budget["groupCode"] == groupCode
+#         ):
+#             budget["spent"] += expense.amount
+#             break
+
+#     return {"message": "Expense uploaded successfully."}
+
+# @app.get("/budget", response_model=List[Budget])
+# async def fetch_budgets(groupCode: str):
+#     """
+#     Fetches all budgets for the specified group code.
+#     """
+#     group_budgets = get_budgets_by_group(groupCode)
+#     if not group_budgets:
+#         raise HTTPException(status_code=404, detail="No budgets found for the group code.")
+#     return group_budgets
+
+# @app.get("/expense", response_model=List[Expense])
+# async def fetch_expenses(groupCode: str):
+#     """
+#     Fetches all expenses for the specified group code.
+#     """
+#     group_expenses = get_expenses_by_group(groupCode)
+#     if not group_expenses:
+#         raise HTTPException(status_code=404, detail="No expenses found for the group code.")
+#     return group_expenses
+
+
+
 
 # @app.post("/upload-image/")
 # async def upload_image(
