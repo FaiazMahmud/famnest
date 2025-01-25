@@ -1753,6 +1753,52 @@ async def get_folders(category_id: str, parent_folder_id: str = None):
     return [{"id": str(folder["_id"]), "folder_name": folder["folder_name"]} for folder in folders]
 
 
+
+## 25.01.25 11.03
+@app.put("/rename-folder/")
+async def rename_folder(rename_info: RenameFolder):
+    folders_collection = db.get_collection("Folders")
+
+    # Find and update the folder's name
+    result = await folders_collection.update_one(
+        {"_id": ObjectId(rename_info.folder_id)},
+        {"$set": {"folder_name": rename_info.new_name}}
+    )
+
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Folder not found")
+
+    return {"success": True, "message": "Folder renamed successfully"}
+
+
+## 25.01.25 11.03
+
+@app.delete("/delete-folder/")
+async def delete_folder(delete_info: DeleteFolder):
+    folders_collection = db.get_collection("Folders")
+    files_collection = db.get_collection("Files")
+
+    # Check if the folder exists
+    folder = await folders_collection.find_one({"_id": ObjectId(delete_info.folder_id)})
+    if not folder:
+        raise HTTPException(status_code=404, detail="Folder not found")
+
+    # Delete the folder
+    await folders_collection.delete_one({"_id": ObjectId(delete_info.folder_id)})
+
+    # Delete files associated with the folder
+    await files_collection.delete_many({"folder_id": delete_info.folder_id})
+
+    # Optionally, recursively delete subfolders
+    subfolders = folders_collection.find({"parent_folder_id": delete_info.folder_id})
+    async for subfolder in subfolders:
+        await delete_folder(DeleteFolder(folder_id=str(subfolder["_id"])))
+
+    return {"success": True, "message": "Folder and associated content deleted successfully"}
+
+
+
+
 # Upload file API
 @app.post("/upload-file/")
 async def upload_file(
