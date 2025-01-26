@@ -858,12 +858,17 @@ async def fetch_budgets(groupCode: str):
     """
     budgets = await budget_collection.find({"groupCode": groupCode}).to_list(length=None)
     if budgets:
-        # Convert ObjectId to string for 'id' field
         for budget in budgets:
-            budget["id"] = str(budget["_id"])
-            del budget["_id"]  # Remove '_id' to match the Pydantic model
+            budget["id"] = str(budget["_id"])  # Convert ObjectId to string
+            del budget["_id"]  # Remove the MongoDB '_id' field
+            
+            # Convert 'month' field from datetime to ISO format
+            if "month" in budget and isinstance(budget["month"], datetime):
+                budget["month"] = budget["month"].isoformat()
+                
         return budgets
     raise HTTPException(status_code=404, detail="No budgets found for the group code.")
+
 
 
 @app.get("/expense", response_model=List[Expense])
@@ -871,14 +876,27 @@ async def fetch_expenses(groupCode: str):
     """
     Fetches all expenses for the specified group code from MongoDB.
     """
-    expenses = await expense_collection.find({"groupCode": groupCode}).to_list(length=None)
-    if expenses:
-        # Convert ObjectId to string for 'id' field
+    try:
+        # Retrieve expenses for the specified group code
+        expenses = await expense_collection.find({"groupCode": groupCode}).to_list(length=None)
+        
+        if not expenses:
+            raise HTTPException(status_code=404, detail="No expenses found for the group code.")
+
+        # Process each expense and convert ObjectId to string
+        processed_expenses = []
         for expense in expenses:
             expense["id"] = str(expense["_id"])
-            del expense["_id"]  # Remove '_id' to match the Pydantic model
-        return expenses
-    raise HTTPException(status_code=404, detail="No expenses found for the group code.")
+            del expense["_id"]
+            processed_expenses.append(expense)
+        
+        return processed_expenses
+
+    except Exception as e:
+        # Log the exception and return a 500 error with the details
+        print(f"Error fetching expenses: {e}")
+        raise HTTPException(status_code=500, detail="An error occurred while fetching expenses.")
+
 
 
 
