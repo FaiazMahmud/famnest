@@ -851,30 +851,50 @@ async def upload_expense(expense: Expense):
     raise HTTPException(status_code=500, detail="Failed to upload expense.")
 
 
-@app.get("/budget", response_model=List[Budget])
-async def fetch_budgets(groupCode: str):
-    """
-    Fetches all budgets for the specified group code from MongoDB.
-    """
-    try:
-        # Query budgets based on the groupCode
-        budgets = await budget_collection.find({"groupCode": groupCode}).to_list(length=None)
+# @app.get("/budget", response_model=List[Budget])
+# async def fetch_budgets(groupCode: str):
+#     """
+#     Fetches all budgets for the specified group code from MongoDB.
+#     """
+#     try:
+#         # Query budgets based on the groupCode
+#         budgets = await budget_collection.find({"groupCode": groupCode}).to_list(length=None)
         
-        if not budgets:
-            raise HTTPException(status_code=404, detail="No budgets found for the group code.")
+#         if not budgets:
+#             raise HTTPException(status_code=404, detail="No budgets found for the group code.")
 
-        # Process each budget and convert ObjectId to string
-        processed_budgets = []
-        for budget in budgets:
-            budget["id"] = str(budget["_id"])
-            del budget["_id"]
-            processed_budgets.append(budget)
+#         # Process each budget and convert ObjectId to string
+#         processed_budgets = []
+#         for budget in budgets:
+#             budget["id"] = str(budget["_id"])
+#             del budget["_id"]
+#             processed_budgets.append(budget)
         
-        return processed_budgets
+#         return processed_budgets
 
-    except Exception as e:
-        print(f"Error fetching budgets: {e}")  # Log the error
-        raise HTTPException(status_code=500, detail="An error occurred while fetching budgets.")
+#     except Exception as e:
+#         print(f"Error fetching budgets: {e}")  # Log the error
+#         raise HTTPException(status_code=500, detail="An error occurred while fetching budgets.")
+
+@app.get("/get-budgets/{group_code}", response_model=List[BudgetRetrieve])
+async def get_budgets(group_code: str, skip: int = 0, limit: int = 20):
+    """
+    Retrieve all budgets for a specific group.
+    """
+    budget_collection = db.get_collection("Budgets")
+    budgets = await budget_collection.find({"groupCode": group_code}).skip(skip).limit(limit).to_list(length=limit)
+
+    return [
+        {
+            "id": str(budget["_id"]),
+            "groupCode": budget["groupCode"],
+            "category": budget["category"],
+            "month": budget["month"],
+            "amount": budget["amount"],
+            "spent": budget.get("spent", 0.0),
+        }
+        for budget in budgets
+    ]
 
 
 
