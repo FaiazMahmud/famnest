@@ -856,18 +856,26 @@ async def fetch_budgets(groupCode: str):
     """
     Fetches all budgets for the specified group code from MongoDB.
     """
-    budgets = await budget_collection.find({"groupCode": groupCode}).to_list(length=None)
-    if budgets:
+    try:
+        # Query budgets based on the groupCode
+        budgets = await budget_collection.find({"groupCode": groupCode}).to_list(length=None)
+        
+        if not budgets:
+            raise HTTPException(status_code=404, detail="No budgets found for the group code.")
+
+        # Process each budget and convert ObjectId to string
+        processed_budgets = []
         for budget in budgets:
-            budget["id"] = str(budget["_id"])  # Convert ObjectId to string
-            del budget["_id"]  # Remove the MongoDB '_id' field
-            
-            # Convert 'month' field from datetime to ISO format
-            if "month" in budget and isinstance(budget["month"], datetime):
-                budget["month"] = budget["month"].isoformat()
-                
-        return budgets
-    raise HTTPException(status_code=404, detail="No budgets found for the group code.")
+            budget["id"] = str(budget["_id"])
+            del budget["_id"]
+            processed_budgets.append(budget)
+        
+        return processed_budgets
+
+    except Exception as e:
+        print(f"Error fetching budgets: {e}")  # Log the error
+        raise HTTPException(status_code=500, detail="An error occurred while fetching budgets.")
+
 
 
 
