@@ -811,7 +811,7 @@ async def update_event(event_id: str, event: EventCreate):
 
 
 
-
+'''
 
 @app.post("/budget")
 async def upload_budget(budget: Budget):
@@ -851,7 +851,7 @@ async def upload_expense(expense: Expense):
         return {"message": "Expense uploaded successfully, but no matching budget was updated.", "id": str(result.inserted_id)}
     raise HTTPException(status_code=500, detail="Failed to upload expense.")
 
-
+'''
 # @app.get("/budget", response_model=List[Budget])
 # async def fetch_budgets(groupCode: str):
 #     """
@@ -876,7 +876,7 @@ async def upload_expense(expense: Expense):
 #     except Exception as e:
 #         print(f"Error fetching budgets: {e}")  # Log the error
 #         raise HTTPException(status_code=500, detail="An error occurred while fetching budgets.")
-
+'''
 @app.get("/get-budgets/{group_code}", response_model=List[BudgetRetrieve])
 async def get_budgets(group_code: str, skip: int = 0, limit: int = 20):
     """
@@ -927,7 +927,7 @@ async def fetch_expenses(groupCode: str):
         raise HTTPException(status_code=500, detail="An error occurred while fetching expenses.")
 
 
-
+'''
 
 # @app.post("/budget")
 # async def upload_budget(budget: Budget):
