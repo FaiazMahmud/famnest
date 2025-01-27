@@ -996,43 +996,85 @@ async def upload_expense(expense: Expense):
 
 # 
 
-@app.get("/budget", response_model=List[Budget]) 
+
+
+# FastAPI code
+from urllib.parse import unquote_plus
+
+@app.get("/budget", response_model=List[Budget])
 async def fetch_budgets(groupCode: str):
     """Fetches all budgets for the specified group code from MongoDB."""
     try:
-        # Add logging to debug the incoming groupCode
-        print(f"Attempting to fetch budgets for groupCode: {groupCode}")
+        # Decode the URL-encoded groupCode
+        decoded_group_code = unquote_plus(unquote_plus(groupCode))
+        print(f"Decoded groupCode: {decoded_group_code}")
         
-        # Escape special characters or validate groupCode if needed
-        # Using raw query to avoid operator interpretation
+        # Use exact match query with decoded group code
         budgets = await budget_collection.find(
-            {"groupCode": {"$eq": groupCode}}
+            {"groupCode": decoded_group_code}
         ).to_list(length=None)
-        
-        # Add debug logging
-        print(f"Query results: {budgets}")
         
         if not budgets:
             raise HTTPException(
-                status_code=404, 
-                detail=f"No budgets found for group code: {groupCode}"
+                status_code=404,
+                detail=f"No budgets found for group code: {decoded_group_code}"
             )
-            
+        
         processed_budgets = []
         for budget in budgets:
-            budget["id"] = str(budget["_id"])
-            del budget["_id"]
-            processed_budgets.append(budget)
-            
+            processed_budget = {
+                "id": str(budget["_id"]),
+                **{k: v for k, v in budget.items() if k != "_id"}
+            }
+            processed_budgets.append(processed_budget)
+        
         return processed_budgets
         
+    except HTTPException:
+        raise
     except Exception as e:
-        # Improve error logging
-        print(f"Detailed error while fetching budgets: {str(e)}")
+        print(f"Error in fetch_budgets: {str(e)}")
         raise HTTPException(
             status_code=500,
             detail=f"An error occurred while fetching budgets: {str(e)}"
         )
+# @app.get("/budget", response_model=List[Budget]) 
+# async def fetch_budgets(groupCode: str):
+#     """Fetches all budgets for the specified group code from MongoDB."""
+#     try:
+#         # Add logging to debug the incoming groupCode
+#         print(f"Attempting to fetch budgets for groupCode: {groupCode}")
+        
+#         # Escape special characters or validate groupCode if needed
+#         # Using raw query to avoid operator interpretation
+#         budgets = await budget_collection.find(
+#             {"groupCode": {"$eq": groupCode}}
+#         ).to_list(length=None)
+        
+#         # Add debug logging
+#         print(f"Query results: {budgets}")
+        
+#         if not budgets:
+#             raise HTTPException(
+#                 status_code=404, 
+#                 detail=f"No budgets found for group code: {groupCode}"
+#             )
+            
+#         processed_budgets = []
+#         for budget in budgets:
+#             budget["id"] = str(budget["_id"])
+#             del budget["_id"]
+#             processed_budgets.append(budget)
+            
+#         return processed_budgets
+        
+#     except Exception as e:
+#         # Improve error logging
+#         print(f"Detailed error while fetching budgets: {str(e)}")
+#         raise HTTPException(
+#             status_code=500,
+#             detail=f"An error occurred while fetching budgets: {str(e)}"
+#         )
 
 
 @app.get("/expense", response_model=List[Expense])
