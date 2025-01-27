@@ -1077,31 +1077,75 @@ async def fetch_budgets(groupCode: str):
 #         )
 
 
+from urllib.parse import unquote_plus
+
 @app.get("/expense", response_model=List[Expense])
 async def fetch_expenses(groupCode: str):
     """
     Fetches all expenses for the specified group code from MongoDB.
     """
     try:
-        # Retrieve expenses for the specified group code
-        expenses = await expense_collection.find({"groupCode": groupCode}).to_list(length=None)
+        # Decode the URL-encoded groupCode
+        decoded_group_code = unquote_plus(unquote_plus(groupCode))
+        print(f"Decoded groupCode for expenses: {decoded_group_code}")
+        
+        # Use exact match query with decoded group code
+        expenses = await expense_collection.find(
+            {"groupCode": decoded_group_code}
+        ).to_list(length=None)
+        
+        print(f"Query results: {expenses}")
         
         if not expenses:
-            raise HTTPException(status_code=404, detail="No expenses found for the group code.")
-
-        # Process each expense and convert ObjectId to string
+            raise HTTPException(
+                status_code=404,
+                detail=f"No expenses found for group code: {decoded_group_code}"
+            )
+        
         processed_expenses = []
         for expense in expenses:
-            expense["id"] = str(expense["_id"])
-            del expense["_id"]
-            processed_expenses.append(expense)
+            processed_expense = {
+                "id": str(expense["_id"]),
+                **{k: v for k, v in expense.items() if k != "_id"}
+            }
+            processed_expenses.append(processed_expense)
         
         return processed_expenses
-
+        
+    except HTTPException:
+        raise
     except Exception as e:
-        # Log the exception and return a 500 error with the details
-        print(f"Error fetching expenses: {e}")
-        raise HTTPException(status_code=500, detail="An error occurred while fetching expenses.")
+        print(f"Detailed error in fetch_expenses: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"An error occurred while fetching expenses: {str(e)}"
+        )
+
+# @app.get("/expense", response_model=List[Expense])
+# async def fetch_expenses(groupCode: str):
+#     """
+#     Fetches all expenses for the specified group code from MongoDB.
+#     """
+#     try:
+#         # Retrieve expenses for the specified group code
+#         expenses = await expense_collection.find({"groupCode": groupCode}).to_list(length=None)
+        
+#         if not expenses:
+#             raise HTTPException(status_code=404, detail="No expenses found for the group code.")
+
+#         # Process each expense and convert ObjectId to string
+#         processed_expenses = []
+#         for expense in expenses:
+#             expense["id"] = str(expense["_id"])
+#             del expense["_id"]
+#             processed_expenses.append(expense)
+        
+#         return processed_expenses
+
+#     except Exception as e:
+#         # Log the exception and return a 500 error with the details
+#         print(f"Error fetching expenses: {e}")
+#         raise HTTPException(status_code=500, detail="An error occurred while fetching expenses.")
 
 
 
