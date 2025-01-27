@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Depends, UploadFile, File , Form,APIRouter, Body
+from fastapi import FastAPI, HTTPException, Depends, UploadFile, File , Form,APIRouter, Body, Query
 from pydantic import BaseModel
 from motor.motor_asyncio import AsyncIOMotorClient
 from passlib.context import CryptContext
@@ -9,6 +9,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from magic import from_buffer
 from typing import Optional, List
 from bson import ObjectId
+
+
+
+from pymongo import MongoClient
+
 
 import mimetypes
 import random
