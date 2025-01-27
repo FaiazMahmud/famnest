@@ -1931,8 +1931,8 @@ async def delete_folder(delete_info: DeleteFolder):
     return {"success": True, "message": "Folder and associated content deleted successfully"}
 
 
-
-
+'''
+#previous works correctly
 # Upload file API
 @app.post("/upload-file/")
 async def upload_file(
@@ -1970,6 +1970,62 @@ async def upload_file(
     result =await files_collection.insert_one(file_data)
 
     return {"success": True, "file_id": str(result.inserted_id)}
+
+'''
+
+import mimetypes
+
+# Upload file API
+@app.post("/upload-file/")
+async def upload_file(
+    category_id: str = Form(...),
+    folder_id: str = Form(...),
+    file: UploadFile = File(...)
+):
+    categories_collection = db.get_collection("Categories")
+    folders_collection = db.get_collection("Folders")
+    files_collection = db.get_collection("Files")
+
+    # Validate category and folder
+    if not categories_collection.find_one({"_id": ObjectId(category_id)}):
+        raise HTTPException(status_code=404, detail="Category not found")
+
+    if not folders_collection.find_one({"_id": ObjectId(folder_id)}):
+        raise HTTPException(status_code=404, detail="Folder not found")
+
+    # Determine MIME type
+    mime_type, _ = mimetypes.guess_type(file.filename)
+
+    # Set resource_type based on MIME type
+    if mime_type and mime_type.startswith("image"):
+        resource_type = "image"
+    elif mime_type and mime_type.startswith("video"):
+        resource_type = "video"
+    elif mime_type and mime_type.startswith("audio"):
+        resource_type = "video"  # Cloudinary handles audio as video type
+    else:
+        resource_type = "raw"  # For non-image/video/audio files (e.g., PDF)
+
+    # Upload to Cloudinary
+    try:
+        result = cloudinary.uploader.upload(file.file, resource_type=resource_type)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Cloudinary upload failed: {str(e)}")
+
+    # Save metadata to MongoDB
+    file_data = {
+        "file_name": file.filename,
+        "category_id": category_id,
+        "folder_id": folder_id,
+        "cloudinary_url": result.get("secure_url"),
+        "public_id": result.get("public_id"),
+        "file_type": result.get("resource_type"),
+        "created_at": datetime.utcnow(),
+    }
+    result = await files_collection.insert_one(file_data)
+
+    return {"success": True, "file_id": str(result.inserted_id)}
+
 
 # Fetch files API
 @app.get("/files/{folder_id}/")
