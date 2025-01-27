@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from typing import Optional, List
 from bson import ObjectId
 
+import mimetypes
 import random
 import string
 import cloudinary
@@ -1973,6 +1974,7 @@ async def upload_file(
 
 '''
 
+'''
 import mimetypes
 
 # Upload file API
@@ -2007,6 +2009,60 @@ async def upload_file(
         resource_type = "raw"  # For non-image/video/audio files (e.g., PDF)
 
     # Upload to Cloudinary
+    try:
+        result = cloudinary.uploader.upload(file.file, resource_type=resource_type)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Cloudinary upload failed: {str(e)}")
+
+    # Save metadata to MongoDB
+    file_data = {
+        "file_name": file.filename,
+        "category_id": category_id,
+        "folder_id": folder_id,
+        "cloudinary_url": result.get("secure_url"),
+        "public_id": result.get("public_id"),
+        "file_type": result.get("resource_type"),
+        "created_at": datetime.utcnow(),
+    }
+    result = await files_collection.insert_one(file_data)
+
+    return {"success": True, "file_id": str(result.inserted_id)}
+'''
+@app.post("/upload-file/")
+async def upload_file(
+    category_id: str = Form(...),
+    folder_id: str = Form(...),
+    file: UploadFile = File(...)
+):
+    from mimetypes import guess_type
+
+    categories_collection = db.get_collection("Categories")
+    folders_collection = db.get_collection("Folders")
+    files_collection = db.get_collection("Files")
+
+    # Validate category and folder
+    if not categories_collection.find_one({"_id": ObjectId(category_id)}):
+        raise HTTPException(status_code=404, detail="Category not found")
+
+    if not folders_collection.find_one({"_id": ObjectId(folder_id)}):
+        raise HTTPException(status_code=404, detail="Folder not found")
+
+    # Detect MIME type of the file
+    mime_type, _ = guess_type(file.filename)
+    resource_type = "auto"  # Default
+
+    # Map MIME type to resource type
+    if mime_type:
+        if mime_type.startswith("image"):
+            resource_type = "image"
+        elif mime_type.startswith("video"):
+            resource_type = "video"
+        elif mime_type.startswith("audio"):
+            resource_type = "raw"
+        elif mime_type.startswith("application"):
+            resource_type = "raw"  # For docs like PDFs
+
+    # Upload to Cloudinary with explicit resource type
     try:
         result = cloudinary.uploader.upload(file.file, resource_type=resource_type)
     except Exception as e:
