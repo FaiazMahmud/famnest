@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from jose import jwt, JWTError
 import os
 from fastapi.middleware.cors import CORSMiddleware
-
+from magic import from_buffer
 from typing import Optional, List
 from bson import ObjectId
 
