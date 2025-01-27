@@ -2083,15 +2083,6 @@ async def upload_file(
     return {"success": True, "file_id": str(result.inserted_id)}
 '''
 
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
-from pymongo import MongoClient
-from cloudinary import uploader
-from datetime import datetime
-from bson import ObjectId
-from magic import from_buffer
-
-app = FastAPI()
-db = MongoClient().your_database  # Replace with your database
 
 @app.post("/upload-file/")
 async def upload_file(
