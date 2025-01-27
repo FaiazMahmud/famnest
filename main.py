@@ -214,21 +214,37 @@ class FileUploadModel(BaseModel):
 #     groupCode: str
 
 
-# Base Model for expense tracking
+# # Base Model for expense tracking
+# class Budget(BaseModel):
+#     id: str  # Store MongoDB ObjectId as a string
+#     category: str
+#     month: datetime
+#     amount: float
+#     spent: float = 0.0
+#     groupCode: str
+
+# class Expense(BaseModel):
+#     id: str  # Store MongoDB ObjectId as a string
+#     category: str
+#     date: datetime
+#     amount: float
+#     groupCode: str
+
+
 class Budget(BaseModel):
-    id: str  # Store MongoDB ObjectId as a string
-    category: str
-    month: datetime
-    amount: float
-    spent: float = 0.0
-    groupCode: str
+    group_code: str = Field(..., description="The unique code for the group")
+    category: str = Field(..., description="The category of the budget")
+    month: str = Field(..., description="The month for the budget in YYYY-MM format")
+    amount: float = Field(..., description="The total amount allocated for the budget")
+    spent: float = Field(0, description="The total amount spent from the budget")
 
 class Expense(BaseModel):
-    id: str  # Store MongoDB ObjectId as a string
-    category: str
-    date: datetime
-    amount: float
-    groupCode: str
+    group_code: str = Field(..., description="The unique code for the group")
+    category: str = Field(..., description="The category of the expense")
+    date: str = Field(..., description="The date of the expense in YYYY-MM-DD format")
+    amount: float = Field(..., description="The amount spent in this expense")
+
+
 
 
 
@@ -808,6 +824,24 @@ async def update_event(event_id: str, event: EventCreate):
         raise HTTPException(status_code=404, detail="Event not found.")
 
     return {"success": True, "message": "Event updated successfully."}
+
+
+
+# Fetch all budgets for a given group code
+@app.get("/get-budgets/{group_code}", response_model=List[Budget])
+async def fetch_budgets(group_code: str):
+    group_budgets = [b for b in budgets if b.group_code == group_code]
+    if not group_budgets:
+        raise HTTPException(status_code=404, detail="No budgets found for the given group code")
+    return group_budgets
+
+# Fetch all expenses for a given group code
+@app.get("/get-expenses/{group_code}", response_model=List[Expense])
+async def fetch_expenses(group_code: str):
+    group_expenses = [e for e in expenses if e.group_code == group_code]
+    if not group_expenses:
+        raise HTTPException(status_code=404, detail="No expenses found for the given group code")
+    return group_expenses
 
 
 
