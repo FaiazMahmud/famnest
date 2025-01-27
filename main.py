@@ -2027,7 +2027,7 @@ async def upload_file(
     result = await files_collection.insert_one(file_data)
 
     return {"success": True, "file_id": str(result.inserted_id)}
-
+'''
 @app.post("/upload-file/")
 async def upload_file(
     category_id: str = Form(...),
@@ -2058,7 +2058,7 @@ async def upload_file(
         elif mime_type.startswith("video"):
             resource_type = "video"
         elif mime_type.startswith("audio"):
-            resource_type = "raw"
+            resource_type = "audio"
         elif mime_type.startswith("application"):
             resource_type = "raw"  # For docs like PDFs
 
@@ -2078,73 +2078,6 @@ async def upload_file(
         "file_type": result.get("resource_type"),
         "created_at": datetime.utcnow(),
     }
-    result = await files_collection.insert_one(file_data)
-
-    return {"success": True, "file_id": str(result.inserted_id)}
-'''
-
-@app.post("/upload-file/")
-async def upload_file(
-    category_id: str = Form(...),
-    folder_id: str = Form(...),
-    file: UploadFile = File(...)
-):
-    categories_collection = db.get_collection("Categories")
-    folders_collection = db.get_collection("Folders")
-    files_collection = db.get_collection("Files")
-
-    # Validate category and folder
-    if not categories_collection.find_one({"_id": ObjectId(category_id)}):
-        raise HTTPException(status_code=404, detail="Category not found")
-
-    if not folders_collection.find_one({"_id": ObjectId(folder_id)}):
-        raise HTTPException(status_code=404, detail="Folder not found")
-
-    # Read file contents for MIME type detection
-    file_bytes = await file.read()
-
-    # Use python-magic to detect MIME type
-    mime_type = from_buffer(file_bytes, mime=True)
-    resource_type = "auto"  # Default to auto-detect
-    file_category = "raw"   # Default file category
-
-    # Map MIME type to resource type and file category
-    if mime_type.startswith("image"):
-        resource_type = "image"
-        file_category = "image"
-    elif mime_type.startswith("video"):
-        resource_type = "video"
-        file_category = "video"
-    elif mime_type.startswith("audio"):
-        resource_type = "raw"
-        file_category = "audio"
-    elif mime_type in ["application/pdf", "application/msword", "application/vnd.ms-excel"]:
-        resource_type = "raw"
-        file_category = "document"
-    else:
-        resource_type = "raw"
-        file_category = "document"
-
-    # Upload the file to Cloudinary
-    try:
-        result = cloudinary.uploader.upload(
-            io.BytesIO(file_bytes),  # Convert byte data to file-like object
-            resource_type=resource_type
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Cloudinary upload failed: {str(e)}")
-
-    # Save file metadata to MongoDB
-    file_data = {
-        "file_name": file.filename,
-        "category_id": category_id,
-        "folder_id": folder_id,
-        "cloudinary_url": result.get("secure_url"),
-        "public_id": result.get("public_id"),
-        "file_type": file_category,
-        "created_at": datetime.utcnow(),
-    }
-
     result = await files_collection.insert_one(file_data)
 
     return {"success": True, "file_id": str(result.inserted_id)}
