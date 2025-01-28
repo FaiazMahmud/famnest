@@ -1399,12 +1399,17 @@ async def upload_media(
         print(resource_type)
         print(res_type)
         print(file.file.readable())
-        upload_result = cloudinary.uploader.upload(
-            file.file,
-            public_id=f'TimeCapsuleMedia/{file_name}',
-            resource_type=res_type,
-        )
-        print("not glaskhgjaslhgjsdhgjkshgjksghasklghsadklj")
+        try:
+            upload_result = cloudinary.uploader.upload(
+               file.file,
+               public_id=f'TimeCapsuleMedia/{file_name}',
+               resource_type=res_type,
+            )
+            print("Upload Successful")
+        except Exception as upload_error:
+            print(f"Error during upload: {upload_error}")
+            raise HTTPException(status_code=500, detail="Failed to upload to Cloudinary")
+
         # Extract the Cloudinary URL
         cloudinary_url = upload_result.get("secure_url")
         if not cloudinary_url:
