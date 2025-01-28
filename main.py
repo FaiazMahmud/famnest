@@ -10,6 +10,7 @@ from magic import from_buffer
 from typing import Optional, List
 from bson import ObjectId
 from pymongo import DESCENDING
+from pymongo import ASCENDING
 
 
 
@@ -2720,6 +2721,33 @@ async def get_recent_files(group_code: str, category_id: str, limit: int = 10):
         raise HTTPException(status_code=500, detail=f"Error fetching recent files: {str(e)}")
 
 
+
+
+@app.delete("/delete-recent-file/{group_code}/{category_id}/{file_id}")
+async def delete_recent_file(group_code: str, category_id: str, file_id: str):
+    recent_files_collection = db.get_collection("RecentFiles")
+
+    # Check if the file exists in the RecentFiles collection
+    file_to_delete = await recent_files_collection.find_one({
+        "group_code": group_code,
+        "category_id": category_id,
+        "file_id": file_id
+    })
+
+    if not file_to_delete:
+        raise HTTPException(status_code=404, detail="Recent file not found")
+
+    # Delete the file from the RecentFiles collection
+    result = await recent_files_collection.delete_one({
+        "group_code": group_code,
+        "category_id": category_id,
+        "file_id": file_id
+    })
+
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="File deletion failed")
+
+    return {"success": True, "message": "File successfully deleted from recent files"}
 
 
 
