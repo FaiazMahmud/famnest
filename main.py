@@ -1402,8 +1402,9 @@ async def upload_media(
         try:
             upload_result = cloudinary.uploader.upload(
                file.file,
-               public_id=f'TimeCapsuleMedia/{file_name}',
+               # public_id=f'TimeCapsuleMedia/{file_name}',
                resource_type=res_type,
+               access_mode="public" 
             )
             print("Upload Successful")
         except Exception as upload_error:
