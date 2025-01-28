@@ -2541,6 +2541,7 @@ async def add_recent_file(group_code: str, category_id: str, file_id: str):
     return {"success": True, "message": "File added to recent"}
 
 
+
 @app.get("/recent-files/{group_code}/{category_id}")
 async def get_recent_files(group_code: str, category_id: str, limit: int = 10):
     recent_files_collection = db.get_collection("RecentFiles")
@@ -2564,6 +2565,7 @@ async def get_recent_files(group_code: str, category_id: str, limit: int = 10):
     print(f"Fetched Files: {recent_files}")
 
     return {"success": True, "recent_files": recent_files}
+
 
 
 
