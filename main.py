@@ -1395,7 +1395,10 @@ async def upload_media(
         if res_type == "audio":
             res_type = "video"
         # Upload the file to Cloudinary
-        print("not jsadgjsaglsajlg")
+        print(file_name)
+        print(resource_type)
+        print(res_type)
+        print(file.file.readable())
         upload_result = cloudinary.uploader.upload(
             file.file,
             public_id=f'TimeCapsuleMedia/{file_name}',
