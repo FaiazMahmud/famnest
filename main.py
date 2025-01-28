@@ -190,6 +190,10 @@ class FileUpload(BaseModel):
 class DeleteFileRequest(BaseModel):
     file_id: str
 
+class RenameFileRequest(BaseModel):
+    file_id: str
+    new_file_name: str
+
 class RenameFolder(BaseModel):
     folder_id: str
     new_name: str
@@ -2414,6 +2418,47 @@ async def delete_file(request: DeleteFileRequest):
     return {"success": True, "message": "File deleted successfully"}
 
 
+
+
+@app.put("/rename-file/")
+async def rename_file(request: RenameFileRequest):
+    # MongoDB collections
+    files_collection = db.get_collection("Files")
+
+    file_id = request.file_id
+    new_file_name = request.new_file_name
+
+    # Validate the file exists in the database
+    file = await files_collection.find_one({"_id": ObjectId(file_id)})
+    if not file:
+        raise HTTPException(status_code=404, detail="File not found")
+
+    # Cloudinary update - We cannot directly rename files on Cloudinary, so we upload a new file and delete the old one.
+    try:
+        public_id = file.get("public_id")
+        if public_id:
+            # Cloudinary file upload with new name
+            new_file_url = cloudinary.uploader.upload(
+                file['cloudinary_url'], 
+                public_id=public_id,
+                resource_type="auto",
+                overwrite=True,
+            )
+            # Update the file metadata in MongoDB
+            updated_file = await files_collection.update_one(
+                {"_id": ObjectId(file_id)},
+                {"$set": {"file_name": new_file_name, "cloudinary_url": new_file_url['secure_url']}},
+            )
+            if updated_file.modified_count == 0:
+                raise HTTPException(status_code=500, detail="Failed to rename file in database")
+
+        else:
+            raise HTTPException(status_code=400, detail="File missing public_id in Cloudinary")
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to rename file: {str(e)}")
+
+    return {"success": True, "message": "File renamed successfully"}
 
 
 
