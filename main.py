@@ -1575,7 +1575,7 @@ def extract_public_id(url: str) -> str:
 @app.put("/rename-mediafiles/{group_code}/{index}/{new_name}/{media_type}")
 async def rename_media(group_code: str, index: int, new_name: str, media_type: str):
     # Ensure media_type is either 'image' or 'video'
-    if media_type not in ["image", "video"]:
+    if media_type not in ["image", "video", "audio"]:
         raise HTTPException(status_code=400, detail="Invalid media type. Use 'image' or 'video'.")
 
     collection = db.get_collection("TimeCapsuleMediaFiles")
@@ -1604,7 +1604,7 @@ async def rename_media(group_code: str, index: int, new_name: str, media_type: s
 @app.delete("/delete-mediafiles/{group_code}/{index}/{media_type}")
 async def delete_media(group_code: str, index: int, media_type: str):
     # Ensure media_type is either 'image' or 'video'
-    if media_type not in ["image", "video"]:
+    if media_type not in ["image", "video","audio"]:
         raise HTTPException(status_code=400, detail="Invalid media type. Use 'image' or 'video'.")
 
     # Define the correct collection and media field
