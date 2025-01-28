@@ -2196,6 +2196,7 @@ async def upload_file(
 
 '''
 
+#work properly only 
 # Upload file API
 @app.post("/upload-file/")
 async def upload_file(
