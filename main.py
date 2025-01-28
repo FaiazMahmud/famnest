@@ -1145,6 +1145,52 @@ async def fetch_expenses(groupCode: str):
             detail=f"An error occurred while fetching expenses: {str(e)}"
         )
 
+
+class RenameBudgetRequest(BaseModel):
+    category: str
+
+@app.delete("/budget/{budget_id}", status_code=200)
+async def delete_budget(budget_id: str = Path(..., description="The ID of the budget to delete")):
+    """
+    Deletes a budget from MongoDB by its ID.
+    """
+    try:
+        # Convert the budget_id to ObjectId for MongoDB query
+        object_id = ObjectId(budget_id)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail="Invalid budget ID format.")
+
+    # Delete the budget from MongoDB
+    result = await budget_collection.delete_one({"_id": object_id})
+    if result.deleted_count == 1:
+        return {"message": "Budget deleted successfully."}
+    else:
+        raise HTTPException(status_code=404, detail="Budget not found.")
+
+@app.put("/budget/{budget_id}", status_code=200)
+async def rename_budget(
+    budget_id: str = Path(..., description="The ID of the budget to rename"),
+    request: RenameBudgetRequest = None
+):
+    """
+    Renames a budget's category in MongoDB by its ID.
+    """
+    try:
+        # Convert the budget_id to ObjectId for MongoDB query
+        object_id = ObjectId(budget_id)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail="Invalid budget ID format.")
+
+    # Update the budget's category in MongoDB
+    result = await budget_collection.update_one(
+        {"_id": object_id},
+        {"$set": {"category": request.category}}
+    )
+    if result.modified_count == 1:
+        return {"message": "Budget renamed successfully."}
+    else:
+        raise HTTPException(status_code=404, detail="Budget not found or no changes made.")
+
 # @app.get("/expense", response_model=List[Expense])
 # async def fetch_expenses(groupCode: str):
 #     """
