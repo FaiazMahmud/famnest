@@ -1397,11 +1397,11 @@ async def upload_media(
         # Upload the file to Cloudinary
     
         upload_result = cloudinary.uploader.upload(
-            file.file.read(),
+            file.file,
             public_id=f'TimeCapsuleMedia/{file_name}',
             resource_type=res_type,
         )
-
+        print("not jsadgjsaglsajlg")
         # Extract the Cloudinary URL
         cloudinary_url = upload_result.get("secure_url")
         if not cloudinary_url:
