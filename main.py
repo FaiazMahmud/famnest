@@ -2380,8 +2380,6 @@ async def upload_file(
     return {"success": True, "file_id": str(result.inserted_id)}
 
 '''
-
-
 @app.delete("/delete-file/")
 async def delete_file(request: DeleteFileRequest):
     # MongoDB collections
@@ -2392,7 +2390,7 @@ async def delete_file(request: DeleteFileRequest):
     file_id = request.file_id
 
     # Validate the file
-    file = files_collection.find_one({"_id": ObjectId(file_id)})
+    file = await files_collection.find_one({"_id": ObjectId(file_id)})  # Ensure this is awaited
     if not file:
         raise HTTPException(status_code=404, detail="File not found")
 
@@ -2408,7 +2406,7 @@ async def delete_file(request: DeleteFileRequest):
         raise HTTPException(status_code=500, detail=f"Failed to delete file from Cloudinary: {str(e)}")
 
     # Remove the file metadata from MongoDB
-    result = files_collection.delete_one({"_id": ObjectId(file_id)})
+    result = await files_collection.delete_one({"_id": ObjectId(file_id)})  # Ensure this is awaited
 
     if result.deleted_count == 0:
         raise HTTPException(status_code=500, detail="Failed to delete file metadata from database")
