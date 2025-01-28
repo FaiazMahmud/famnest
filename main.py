@@ -2542,6 +2542,7 @@ async def add_recent_file(group_code: str, category_id: str, file_id: str):
 
 
 
+
 @app.get("/recent-files/{group_code}/{category_id}")
 async def get_recent_files(group_code: str, category_id: str, limit: int = 10):
     recent_files_collection = db.get_collection("RecentFiles")
@@ -2549,22 +2550,42 @@ async def get_recent_files(group_code: str, category_id: str, limit: int = 10):
     # Debug: Log the query parameters
     print(f"Query Parameters - group_code: {group_code}, category_id: {category_id}, limit: {limit}")
 
-    # Query recent files
-    recent_files_cursor = recent_files_collection.find(
-        {"group_code": group_code, "category_id": category_id}
-    ).sort("last_accessed", DESCENDING).limit(limit)
+    # Optional limit validation
+    limit = min(limit, 100)  # Set upper limit to 100 if limit exceeds it
 
-    # Collect results
-    recent_files = []
-    async for file in recent_files_cursor:
-        file["_id"] = str(file["_id"])
-        file["last_accessed"] = file["last_accessed"].strftime("%Y-%m-%d %H:%M:%S")
-        recent_files.append(file)
+    try:
+        # Query recent files
+        recent_files_cursor = recent_files_collection.find(
+            {"group_code": group_code, "category_id": category_id}
+        ).sort("last_accessed", DESCENDING).limit(limit)
 
-    # Debug: Log the fetched data
-    print(f"Fetched Files: {recent_files}")
+        # Convert the cursor to a list
+        recent_files = await recent_files_cursor.to_list(length=None)
 
-    return {"success": True, "recent_files": recent_files}
+        # Format the result to match the required structure
+        files_list = [
+            {
+                "id": str(file["_id"]),
+                "file_name": file["file_name"],
+                "file_id": file["file_id"],
+                "file_type": file["file_type"],
+                "last_accessed": file["last_accessed"].strftime("%Y-%m-%d %H:%M:%S")
+            }
+            for file in recent_files
+        ]
+
+        # Debug: Log the fetched data
+        print(f"Fetched Files: {files_list}")
+
+        if not files_list:
+            return {"success": False, "message": "No recent files found"}
+        
+        return {"success": True, "recent_files": files_list}
+
+    except Exception as e:
+        # Error handling
+        raise HTTPException(status_code=500, detail=f"Error fetching recent files: {str(e)}")
+
 
 
 
