@@ -1492,8 +1492,10 @@ async def get_mediafiles(group_code: str, media_type: str):
             media_files = group.get("uploaded_videos", [])
         elif media_type == "storie":
             media_files = group.get("uploaded_stories", [])
+        elif media_type == "audio":
+            media_files = group.get("uploaded_audios",[])
         else:
-            raise HTTPException(status_code=400, detail="Invalid media type. Use 'image' or 'video' or 'stories'.")
+            raise HTTPException(status_code=400, detail="Invalid media type. Use 'image' or 'video' or 'audio' or 'stories'.")
         return {f"{media_type}s": media_files}
     
     except Exception as e:
