@@ -1389,6 +1389,7 @@ async def upload_media(
     file: UploadFile = File(...),
     resource_type: str = Form(...),
 ):
+    print("gsdags")
     try:
         res_type = resource_type
         if res_type == "audio":
