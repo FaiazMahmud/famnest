@@ -2541,23 +2541,29 @@ async def add_recent_file(group_code: str, category_id: str, file_id: str):
     return {"success": True, "message": "File added to recent"}
 
 
-@app.get("/recent-files/")
+@app.get("/recent-files/{group_code}/{category_id}")
 async def get_recent_files(group_code: str, category_id: str, limit: int = 10):
     recent_files_collection = db.get_collection("RecentFiles")
 
-    # Query recent files for the given group and category
+    # Debug: Log the query parameters
+    print(f"Query Parameters - group_code: {group_code}, category_id: {category_id}, limit: {limit}")
+
+    # Query recent files
     recent_files_cursor = recent_files_collection.find(
         {"group_code": group_code, "category_id": category_id}
     ).sort("last_accessed", DESCENDING).limit(limit)
 
+    # Collect results
     recent_files = []
     async for file in recent_files_cursor:
-        file["_id"] = str(file["_id"])  # Convert ObjectId to string
+        file["_id"] = str(file["_id"])
         file["last_accessed"] = file["last_accessed"].strftime("%Y-%m-%d %H:%M:%S")
         recent_files.append(file)
 
-    return {"success": True, "recent_files": recent_files}
+    # Debug: Log the fetched data
+    print(f"Fetched Files: {recent_files}")
 
+    return {"success": True, "recent_files": recent_files}
 
 
 
