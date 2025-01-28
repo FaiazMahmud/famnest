@@ -1390,11 +1390,14 @@ async def upload_media(
     resource_type: str = Form(...),
 ):
     try:
+        res_type = resource_type
+        if res_type == "audio":
+            res_type = "video"
         # Upload the file to Cloudinary
         upload_result = cloudinary.uploader.upload(
             file.file,
             public_id=f'TimeCapsuleMedia/{file_name}',
-            resource_type=resource_type,
+            resource_type=res_type,
         )
 
         # Extract the Cloudinary URL
