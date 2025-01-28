@@ -2502,7 +2502,7 @@ async def get_files(folder_id: str):
     return files_list
 
 
-
+''' #perfectly works
 @app.post("/add-recent-file/")
 async def add_recent_file(group_code: str, category_id: str, file_id: str):
     recent_files_collection = db.get_collection("RecentFiles")
@@ -2586,8 +2586,92 @@ async def get_recent_files(group_code: str, category_id: str, limit: int = 10):
         # Error handling
         raise HTTPException(status_code=500, detail=f"Error fetching recent files: {str(e)}")
 
+'''
+
+@app.post("/add-recent-file/")
+async def add_recent_file(group_code: str, category_id: str, file_id: str):
+    recent_files_collection = db.get_collection("RecentFiles")
+    files_collection = db.get_collection("Files")
+
+    # Validate the file exists in Files collection
+    file = await files_collection.find_one({"_id": ObjectId(file_id)})
+    if not file:
+        raise HTTPException(status_code=404, detail="File not found")
+
+    # Check if the file is already in RecentFiles
+    existing = await recent_files_collection.find_one({
+        "group_code": group_code,
+        "category_id": category_id,
+        "file_id": file_id
+    })
+
+    if existing:
+        # Update the last_accessed timestamp
+        await recent_files_collection.update_one(
+            {"_id": existing["_id"]},
+            {"$set": {"last_accessed": datetime.utcnow()}}
+        )
+    else:
+        # Add a new entry with cloudinary_url
+        cloudinary_url = file.get("cloudinary_url", "")  # Fetch cloudinary_url if exists
+        recent_file = {
+            "group_code": group_code,
+            "category_id": category_id,
+            "file_id": file_id,
+            "file_name": file["file_name"],
+            "file_type": file.get("file_type", "Unknown"),
+            "cloudinary_url": cloudinary_url,  # Include cloudinary_url
+            "last_accessed": datetime.utcnow(),
+        }
+        await recent_files_collection.insert_one(recent_file)
+
+    return {"success": True, "message": "File added to recent"}
 
 
+
+@app.get("/recent-files/{group_code}/{category_id}")
+async def get_recent_files(group_code: str, category_id: str, limit: int = 10):
+    recent_files_collection = db.get_collection("RecentFiles")
+
+    # Debug: Log the query parameters
+    print(f"Query Parameters - group_code: {group_code}, category_id: {category_id}, limit: {limit}")
+
+    # Optional limit validation
+    limit = min(limit, 100)  # Set upper limit to 100 if limit exceeds it
+
+    try:
+        # Query recent files
+        recent_files_cursor = recent_files_collection.find(
+            {"group_code": group_code, "category_id": category_id}
+        ).sort("last_accessed", DESCENDING).limit(limit)
+
+        # Convert the cursor to a list
+        recent_files = await recent_files_cursor.to_list(length=None)
+
+        # Format the result to match the required structure, include cloudinary_url
+        files_list = [
+            {
+                "id": str(file["_id"]),
+                "file_name": file["file_name"],
+                "file_id": file["file_id"],
+                "file_type": file["file_type"],
+                "cloudinary_url": file.get("cloudinary_url", ""),  # Fetch cloudinary_url
+                "last_accessed": file["last_accessed"].strftime("%Y-%m-%d %H:%M:%S")
+            }
+            for file in recent_files
+        ]
+
+        # Debug: Log the fetched data
+        print(f"Fetched Files: {files_list}")
+
+        if not files_list:
+            return {"success": False, "message": "No recent files found"}
+        
+        return {"success": True, "recent_files": files_list}
+
+    except Exception as e:
+        # Error handling
+        raise HTTPException(status_code=500, detail=f"Error fetching recent files: {str(e)}")
 
 
 
