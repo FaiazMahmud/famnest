@@ -211,6 +211,20 @@ class FileUploadModel(BaseModel):
     file_type: str
     created_at: datetime
 
+
+class AddRecentFileRequest(BaseModel):
+    group_code: str
+    category_id: str
+    file_id: str
+
+class RecentFile(BaseModel):
+    group_code: str
+    category_id: str
+    file_id: str
+    file_name: Optional[str]
+    file_type: Optional[str]
+    last_accessed: datetime
+
 #Base Model for expense_tracking 
 class Budget(BaseModel):
     category: str
@@ -224,6 +238,7 @@ class Expense(BaseModel):
     date: datetime
     amount: float
     groupCode: str
+    
 
 
 # # Base Model for expense tracking
@@ -2462,8 +2477,6 @@ async def rename_file(request: RenameFileRequest):
 
 
 
-
-
 # Fetch files API
 @app.get("/files/{folder_id}/")
 async def get_files(folder_id: str):
@@ -2485,6 +2498,64 @@ async def get_files(folder_id: str):
         for file in files
     ]
     return files_list
+
+
+
+@app.post("/add-recent-file/")
+async def add_recent_file(group_code: str, category_id: str, file_id: str):
+    recent_files_collection = db.get_collection("RecentFiles")
+    files_collection = db.get_collection("Files")
+
+    # Validate the file exists in Files collection
+    file = await files_collection.find_one({"_id": ObjectId(file_id)})
+    if not file:
+        raise HTTPException(status_code=404, detail="File not found")
+
+    # Check if the file is already in RecentFiles
+    existing = await recent_files_collection.find_one({
+        "group_code": group_code,
+        "category_id": category_id,
+        "file_id": file_id
+    })
+
+    if existing:
+        # Update the last_accessed timestamp
+        await recent_files_collection.update_one(
+            {"_id": existing["_id"]},
+            {"$set": {"last_accessed": datetime.utcnow()}}
+        )
+    else:
+        # Add a new entry
+        recent_file = {
+            "group_code": group_code,
+            "category_id": category_id,
+            "file_id": file_id,
+            "file_name": file["file_name"],
+            "file_type": file.get("file_type", "Unknown"),
+            "last_accessed": datetime.utcnow(),
+        }
+        await recent_files_collection.insert_one(recent_file)
+
+    return {"success": True, "message": "File added to recent"}
+
+
+@app.get("/recent-files/")
+async def get_recent_files(group_code: str, category_id: str, limit: int = 10):
+    recent_files_collection = db.get_collection("RecentFiles")
+
+    # Query recent files for the given group and category
+    recent_files_cursor = recent_files_collection.find(
+        {"group_code": group_code, "category_id": category_id}
+    ).sort("last_accessed", DESCENDING).limit(limit)
+
+    recent_files = []
+    async for file in recent_files_cursor:
+        file["_id"] = str(file["_id"])  # Convert ObjectId to string
+        file["last_accessed"] = file["last_accessed"].strftime("%Y-%m-%d %H:%M:%S")
+        recent_files.append(file)
+
+    return {"success": True, "recent_files": recent_files}
+
 
 
 
