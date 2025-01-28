@@ -187,6 +187,9 @@ class FileUpload(BaseModel):
     folder_id: str
     file_url: str
 
+class DeleteFileRequest(BaseModel):
+    file_id: str
+
 class RenameFolder(BaseModel):
     folder_id: str
     new_name: str
@@ -2377,6 +2380,46 @@ async def upload_file(
     return {"success": True, "file_id": str(result.inserted_id)}
 
 '''
+
+
+@app.delete("/delete-file/")
+async def delete_file(request: DeleteFileRequest):
+    # MongoDB collections
+    categories_collection = db.get_collection("Categories")
+    folders_collection = db.get_collection("Folders")
+    files_collection = db.get_collection("Files")
+
+    file_id = request.file_id
+
+    # Validate the file
+    file = files_collection.find_one({"_id": ObjectId(file_id)})
+    if not file:
+        raise HTTPException(status_code=404, detail="File not found")
+
+    # Extract public_id for Cloudinary deletion
+    public_id = file.get("public_id")
+    if not public_id:
+        raise HTTPException(status_code=400, detail="File missing public_id in database")
+
+    # Attempt to delete the file from Cloudinary
+    try:
+        cloudinary.uploader.destroy(public_id)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to delete file from Cloudinary: {str(e)}")
+
+    # Remove the file metadata from MongoDB
+    result = files_collection.delete_one({"_id": ObjectId(file_id)})
+
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=500, detail="Failed to delete file metadata from database")
+
+    return {"success": True, "message": "File deleted successfully"}
+
+
+
+
+
+
 
 # Fetch files API
 @app.get("/files/{folder_id}/")
