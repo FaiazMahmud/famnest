@@ -230,41 +230,56 @@ class RecentFile(BaseModel):
     file_type: Optional[str]
     last_accessed: datetime
 
-#Base Model for expense_tracking 
-'''
+# #Base Model for expense_tracking 
+# class Budget(BaseModel):
+#     category: str
+#     month: datetime
+#     amount: float
+#     spent: float = 0.0
+#     groupCode: str
+
+# class Expense(BaseModel):
+#     category: str
+#     date: datetime
+#     amount: float
+#     groupCode: str
+
 class Budget(BaseModel):
+    id: str = None
     category: str
     month: datetime
     amount: float
-    spent: float = 0.0
+    spent: float
     groupCode: str
 
+# Expense Model
 class Expense(BaseModel):
+    id: str = None
     category: str
     date: datetime
     amount: float
     groupCode: str
-    '''
-class Budget(BaseModel):
-    id: str | None = None  # Make id optional with None default
-    category: str
-    month: datetime
-    amount: float
-    spent: float = 0.0
-    groupCode: str
-
-    class Config:
-        # Allow population by field name for MongoDB _id
-        allow_population_by_field_name = True
-        json_encoders = {
-            ObjectId: str  # Convert ObjectId to string
-        }
     
-    class Expense(BaseModel):
-    category: str
-    date: datetime
-    amount: float
-    groupCode: str
+# class Budget(BaseModel):
+#     id: str | None = None  # Make id optional with None default
+#     category: str
+#     month: datetime
+#     amount: float
+#     spent: float = 0.0
+#     groupCode: str
+
+#     class Config:
+#         # Allow population by field name for MongoDB _id
+#         allow_population_by_field_name = True
+#         json_encoders = {
+#             ObjectId: str  # Convert ObjectId to string
+#         }
+    
+#     class Expense(BaseModel):
+#     category: str
+#     date: datetime
+#     amount: float
+#     groupCode: str
 
 
 # # Base Model for expense tracking
@@ -1003,42 +1018,55 @@ async def upload_expense(expense: Expense):
 from urllib.parse import unquote_plus
 
 @app.get("/budget", response_model=List[Budget])
-async def fetch_budgets(groupCode: str):
-    """Fetches all budgets for the specified group code from MongoDB."""
+async def fetch_budgets(groupCode: str = Query(..., description="Group code to filter budgets")):
+    """
+    Fetches all budgets for the specified group code from MongoDB.
+    """
     try:
-        # Decode the URL-encoded groupCode
-        decoded_group_code = unquote_plus(unquote_plus(groupCode))
+        # Decode the group code in case it's URL-encoded
+        decoded_group_code = unquote_plus(groupCode)
         print(f"Decoded groupCode: {decoded_group_code}")
-        
-        # Use exact match query with decoded group code
-        budgets = await budget_collection.find(
-            {"groupCode": decoded_group_code}
-        ).to_list(length=None)
-        
+
+        # Query MongoDB for budgets with the matching groupCode
+        budgets = await budget_collection.find({"groupCode": decoded_group_code}).to_list(length=None)
+
         if not budgets:
-            raise HTTPException(
-                status_code=404,
-                detail=f"No budgets found for group code: {decoded_group_code}"
-            )
-        
-        processed_budgets = []
-        for budget in budgets:
-            processed_budget = {
-                "id": str(budget["_id"]),
-                **{k: v for k, v in budget.items() if k != "_id"}
-            }
-            processed_budgets.append(processed_budget)
-        
-        return processed_budgets
-        
+            raise HTTPException(status_code=404, detail=f"No budgets found for group code: {decoded_group_code}")
+
+        # Convert ObjectId to string and return processed budgets
+        return [{"id": str(budget["_id"]), **{k: v for k, v in budget.items() if k != "_id"}} for budget in budgets]
+
     except HTTPException:
         raise
     except Exception as e:
-        print(f"Error in fetch_budgets: {str(e)}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"An error occurred while fetching budgets: {str(e)}"
-        )
+        print(f"Error fetching budgets: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"An error occurred while fetching budgets: {str(e)}")
+
+
+@app.get("/expense", response_model=List[Expense])
+async def fetch_expenses(groupCode: str = Query(..., description="Group code to filter expenses")):
+    """
+    Fetches all expenses for the specified group code from MongoDB.
+    """
+    try:
+        # Decode the group code in case it's URL-encoded
+        decoded_group_code = unquote_plus(groupCode)
+        print(f"Decoded groupCode for expenses: {decoded_group_code}")
+
+        # Query MongoDB for expenses with the matching groupCode
+        expenses = await expense_collection.find({"groupCode": decoded_group_code}).to_list(length=None)
+
+        if not expenses:
+            raise HTTPException(status_code=404, detail=f"No expenses found for group code: {decoded_group_code}")
+
+        # Convert ObjectId to string and return processed expenses
+        return [{"id": str(expense["_id"]), **{k: v for k, v in expense.items() if k != "_id"}} for expense in expenses]
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error fetching expenses: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"An error occurred while fetching expenses: {str(e)}")
 # @app.get("/budget", response_model=List[Budget]) 
 # async def fetch_budgets(groupCode: str):
 #     """Fetches all budgets for the specified group code from MongoDB."""
@@ -1080,93 +1108,93 @@ async def fetch_budgets(groupCode: str):
 
 from urllib.parse import unquote_plus
 
-@app.get("/expense", response_model=List[Expense])
-async def fetch_expenses(groupCode: str):
-    """
-    Fetches all expenses for the specified group code from MongoDB.
-    """
-    try:
-        # Decode the URL-encoded groupCode
-        decoded_group_code = unquote_plus(unquote_plus(groupCode))
-        print(f"Decoded groupCode for expenses: {decoded_group_code}")
+# @app.get("/expense", response_model=List[Expense])
+# async def fetch_expenses(groupCode: str):
+#     """
+#     Fetches all expenses for the specified group code from MongoDB.
+#     """
+#     try:
+#         # Decode the URL-encoded groupCode
+#         decoded_group_code = unquote_plus(unquote_plus(groupCode))
+#         print(f"Decoded groupCode for expenses: {decoded_group_code}")
         
-        # Use exact match query with decoded group code
-        expenses = await expense_collection.find(
-            {"groupCode": decoded_group_code}
-        ).to_list(length=None)
+#         # Use exact match query with decoded group code
+#         expenses = await expense_collection.find(
+#             {"groupCode": decoded_group_code}
+#         ).to_list(length=None)
         
-        print(f"Query results: {expenses}")
+#         print(f"Query results: {expenses}")
         
-        if not expenses:
-            raise HTTPException(
-                status_code=404,
-                detail=f"No expenses found for group code: {decoded_group_code}"
-            )
+#         if not expenses:
+#             raise HTTPException(
+#                 status_code=404,
+#                 detail=f"No expenses found for group code: {decoded_group_code}"
+#             )
         
-        processed_expenses = []
-        for expense in expenses:
-            processed_expense = {
-                "id": str(expense["_id"]),
-                **{k: v for k, v in expense.items() if k != "_id"}
-            }
-            processed_expenses.append(processed_expense)
+#         processed_expenses = []
+#         for expense in expenses:
+#             processed_expense = {
+#                 "id": str(expense["_id"]),
+#                 **{k: v for k, v in expense.items() if k != "_id"}
+#             }
+#             processed_expenses.append(processed_expense)
         
-        return processed_expenses
+#         return processed_expenses
         
-    except HTTPException:
-        raise
-    except Exception as e:
-        print(f"Detailed error in fetch_expenses: {str(e)}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"An error occurred while fetching expenses: {str(e)}"
-        )
+#     except HTTPException:
+#         raise
+#     except Exception as e:
+#         print(f"Detailed error in fetch_expenses: {str(e)}")
+#         raise HTTPException(
+#             status_code=500,
+#             detail=f"An error occurred while fetching expenses: {str(e)}"
+#         )
 
 
-class RenameBudgetRequest(BaseModel):
-    category: str
+# class RenameBudgetRequest(BaseModel):
+#     category: str
 
-@app.delete("/budget/{budget_id}", status_code=200)
-async def delete_budget(budget_id: str = Path(..., description="The ID of the budget to delete")):
-    """
-    Deletes a budget from MongoDB by its ID.
-    """
-    try:
-        # Convert the budget_id to ObjectId for MongoDB query
-        object_id = ObjectId(budget_id)
-    except Exception as e:
-        raise HTTPException(status_code=400, detail="Invalid budget ID format.")
+# @app.delete("/budget/{budget_id}", status_code=200)
+# async def delete_budget(budget_id: str = Path(..., description="The ID of the budget to delete")):
+#     """
+#     Deletes a budget from MongoDB by its ID.
+#     """
+#     try:
+#         # Convert the budget_id to ObjectId for MongoDB query
+#         object_id = ObjectId(budget_id)
+#     except Exception as e:
+#         raise HTTPException(status_code=400, detail="Invalid budget ID format.")
 
-    # Delete the budget from MongoDB
-    result = await budget_collection.delete_one({"_id": object_id})
-    if result.deleted_count == 1:
-        return {"message": "Budget deleted successfully."}
-    else:
-        raise HTTPException(status_code=404, detail="Budget not found.")
+#     # Delete the budget from MongoDB
+#     result = await budget_collection.delete_one({"_id": object_id})
+#     if result.deleted_count == 1:
+#         return {"message": "Budget deleted successfully."}
+#     else:
+#         raise HTTPException(status_code=404, detail="Budget not found.")
 
-@app.put("/budget/{budget_id}", status_code=200)
-async def rename_budget(
-    budget_id: str = Path(..., description="The ID of the budget to rename"),
-    request: RenameBudgetRequest = None
-):
-    """
-    Renames a budget's category in MongoDB by its ID.
-    """
-    try:
-        # Convert the budget_id to ObjectId for MongoDB query
-        object_id = ObjectId(budget_id)
-    except Exception as e:
-        raise HTTPException(status_code=400, detail="Invalid budget ID format.")
+# @app.put("/budget/{budget_id}", status_code=200)
+# async def rename_budget(
+#     budget_id: str = Path(..., description="The ID of the budget to rename"),
+#     request: RenameBudgetRequest = None
+# ):
+#     """
+#     Renames a budget's category in MongoDB by its ID.
+#     """
+#     try:
+#         # Convert the budget_id to ObjectId for MongoDB query
+#         object_id = ObjectId(budget_id)
+#     except Exception as e:
+#         raise HTTPException(status_code=400, detail="Invalid budget ID format.")
 
-    # Update the budget's category in MongoDB
-    result = await budget_collection.update_one(
-        {"_id": object_id},
-        {"$set": {"category": request.category}}
-    )
-    if result.modified_count == 1:
-        return {"message": "Budget renamed successfully."}
-    else:
-        raise HTTPException(status_code=404, detail="Budget not found or no changes made.")
+#     # Update the budget's category in MongoDB
+#     result = await budget_collection.update_one(
+#         {"_id": object_id},
+#         {"$set": {"category": request.category}}
+#     )
+#     if result.modified_count == 1:
+#         return {"message": "Budget renamed successfully."}
+#     else:
+#         raise HTTPException(status_code=404, detail="Budget not found or no changes made.")
 
 # @app.get("/expense", response_model=List[Expense])
 # async def fetch_expenses(groupCode: str):
