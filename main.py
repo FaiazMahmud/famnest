@@ -1355,35 +1355,35 @@ from urllib.parse import unquote_plus
 #         print(f"Error in fetch_budgets: {str(e)}")
 #         raise HTTPException(status_code=500, detail=f"An error occurred while fetching budgets: {str(e)}")
 
-@app.get("/expense", response_model=List[Expense])
-async def fetch_expenses(groupCode: str):
-    """
-    Fetches all expenses for the specified group code from MongoDB.
-    """
-    try:
-        decoded_group_code = unquote_plus(unquote_plus(groupCode))
-        if not decoded_group_code:
-            raise HTTPException(status_code=400, detail="Group code cannot be empty.")
+# @app.get("/expense", response_model=List[Expense])
+# async def fetch_expenses(groupCode: str):
+#     """
+#     Fetches all expenses for the specified group code from MongoDB.
+#     """
+#     try:
+#         decoded_group_code = unquote_plus(unquote_plus(groupCode))
+#         if not decoded_group_code:
+#             raise HTTPException(status_code=400, detail="Group code cannot be empty.")
 
-        expenses = await expense_collection.find({"groupCode": decoded_group_code}).to_list(length=None)
-        if not expenses:
-            raise HTTPException(status_code=404, detail=f"No expenses found for group code: {decoded_group_code}")
+#         expenses = await expense_collection.find({"groupCode": decoded_group_code}).to_list(length=None)
+#         if not expenses:
+#             raise HTTPException(status_code=404, detail=f"No expenses found for group code: {decoded_group_code}")
 
-        processed_expenses = []
-        for expense in expenses:
-            processed_expense = {
-                "id": str(expense["_id"]),
-                **{k: v for k, v in expense.items() if k != "_id"}
-            }
-            processed_expenses.append(processed_expense)
+#         processed_expenses = []
+#         for expense in expenses:
+#             processed_expense = {
+#                 "id": str(expense["_id"]),
+#                 **{k: v for k, v in expense.items() if k != "_id"}
+#             }
+#             processed_expenses.append(processed_expense)
 
-        return processed_expenses
+#         return processed_expenses
 
-    except HTTPException:
-        raise
-    except Exception as e:
-        print(f"Detailed error in fetch_expenses: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"An error occurred while fetching expenses: {str(e)}")
+#     except HTTPException:
+#         raise
+#     except Exception as e:
+#         print(f"Detailed error in fetch_expenses: {str(e)}")
+#         raise HTTPException(status_code=500, detail=f"An error occurred while fetching expenses: {str(e)}")
 
 @app.delete("/budget/{groupCode}/{category}/{month}", status_code=200)
 async def delete_budget(
