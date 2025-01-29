@@ -1275,24 +1275,75 @@ async def fetch_expenses(groupCode: str):
         print(f"Detailed error in fetch_expenses: {str(e)}")
         raise HTTPException(status_code=500, detail=f"An error occurred while fetching expenses: {str(e)}")
 
-@app.delete("/budget/{budget_id}", status_code=200)
-async def delete_budget(budget_id: str = Path(..., description="The ID of the budget to delete")):
+@app.delete("/budget/{groupCode}/{category}/{month}", status_code=200)
+async def delete_budget(
+    groupCode: str = Path(..., description="The group code"),
+    category: str = Path(..., description="The budget category"),
+    month: str = Path(..., description="The budget month in YYYY-MM format")
+):
     """
-    Deletes a budget from MongoDB by its ID.
+    Deletes a budget from MongoDB using composite key (groupCode, category, month).
     """
     try:
-        if not budget_id:
-            raise HTTPException(status_code=400, detail="Budget ID cannot be empty.")
+        decoded_group_code = unquote_plus(unquote_plus(groupCode))
+        if not decoded_group_code:
+            raise HTTPException(status_code=400, detail="Group code cannot be empty.")
 
-        object_id = ObjectId(budget_id)
-        result = await budget_collection.delete_one({"_id": object_id})
+        # Parse the month string to datetime
+        try:
+            month_date = datetime.strptime(month, "%Y-%m")
+            # Create start and end of month for query
+            start_of_month = datetime(month_date.year, month_date.month, 1)
+            if month_date.month == 12:
+                end_of_month = datetime(month_date.year + 1, 1, 1)
+            else:
+                end_of_month = datetime(month_date.year, month_date.month + 1, 1)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid month format. Use YYYY-MM")
+
+        result = await budget_collection.delete_one({
+            "groupCode": decoded_group_code,
+            "category": category,
+            "month": {
+                "$gte": start_of_month,
+                "$lt": end_of_month
+            }
+        })
+
         if result.deleted_count == 1:
             return {"message": "Budget deleted successfully."}
         else:
-            raise HTTPException(status_code=404, detail="Budget not found.")
+            raise HTTPException(
+                status_code=404, 
+                detail=f"Budget not found for category {category} in {month}"
+            )
 
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=400, detail="Invalid budget ID format.")
+        print(f"Error in delete_budget: {str(e)}")
+        raise HTTPException(
+            status_code=500, 
+            detail=f"An error occurred while deleting the budget: {str(e)}"
+        )
+# @app.delete("/budget/{budget_id}", status_code=200)
+# async def delete_budget(budget_id: str = Path(..., description="The ID of the budget to delete")):
+#     """
+#     Deletes a budget from MongoDB by its ID.
+#     """
+#     try:
+#         if not budget_id:
+#             raise HTTPException(status_code=400, detail="Budget ID cannot be empty.")
+
+#         object_id = ObjectId(budget_id)
+#         result = await budget_collection.delete_one({"_id": object_id})
+#         if result.deleted_count == 1:
+#             return {"message": "Budget deleted successfully."}
+#         else:
+#             raise HTTPException(status_code=404, detail="Budget not found.")
+
+#     except Exception as e:
+#         raise HTTPException(status_code=400, detail="Invalid budget ID format.")
 
 @app.put("/budget/{budget_id}", status_code=200)
 async def rename_budget(
