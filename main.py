@@ -11,7 +11,6 @@ from typing import Optional, List
 from bson import ObjectId
 from pymongo import DESCENDING
 from pymongo import ASCENDING
-from urllib.parse import unquote_plus
 
 
 
@@ -1014,10 +1013,12 @@ async def upload_expense(expense: Expense):
 
 
 
+from urllib.parse import unquote  # Use unquote instead of unquote_plus
+
 @app.get("/budget", response_model=List[Budget])
 async def fetch_budgets(groupCode: str = Query(..., description="Group code to filter budgets")):
     try:
-        decoded_group_code = unquote_plus(groupCode)
+        decoded_group_code = unquote(groupCode)  # Use unquote instead of unquote_plus
         print(f"Decoded groupCode: {decoded_group_code}")
 
         budgets = await budget_collection.find({"groupCode": decoded_group_code}).to_list(length=None)
@@ -1034,7 +1035,7 @@ async def fetch_budgets(groupCode: str = Query(..., description="Group code to f
 @app.get("/expense", response_model=List[Expense])
 async def fetch_expenses(groupCode: str = Query(..., description="Group code to filter expenses")):
     try:
-        decoded_group_code = unquote_plus(groupCode)
+        decoded_group_code = unquote(groupCode)  # Use unquote instead of unquote_plus
         print(f"Decoded groupCode for expenses: {decoded_group_code}")
 
         expenses = await expense_collection.find({"groupCode": decoded_group_code}).to_list(length=None)
