@@ -1014,59 +1014,90 @@ async def upload_expense(expense: Expense):
 
 
 
-# FastAPI code
-from urllib.parse import unquote_plus
-
 @app.get("/budget", response_model=List[Budget])
 async def fetch_budgets(groupCode: str = Query(..., description="Group code to filter budgets")):
-    """
-    Fetches all budgets for the specified group code from MongoDB.
-    """
     try:
-        # Decode the group code in case it's URL-encoded
         decoded_group_code = unquote_plus(groupCode)
         print(f"Decoded groupCode: {decoded_group_code}")
 
-        # Query MongoDB for budgets with the matching groupCode
         budgets = await budget_collection.find({"groupCode": decoded_group_code}).to_list(length=None)
 
         if not budgets:
-            raise HTTPException(status_code=404, detail=f"No budgets found for group code: {decoded_group_code}")
+            return []  # Return an empty list instead of raising an exception
 
-        # Convert ObjectId to string and return processed budgets
         return [{"id": str(budget["_id"]), **{k: v for k, v in budget.items() if k != "_id"}} for budget in budgets]
 
-    except HTTPException:
-        raise
     except Exception as e:
         print(f"Error fetching budgets: {str(e)}")
         raise HTTPException(status_code=500, detail=f"An error occurred while fetching budgets: {str(e)}")
 
-
 @app.get("/expense", response_model=List[Expense])
 async def fetch_expenses(groupCode: str = Query(..., description="Group code to filter expenses")):
-    """
-    Fetches all expenses for the specified group code from MongoDB.
-    """
     try:
-        # Decode the group code in case it's URL-encoded
         decoded_group_code = unquote_plus(groupCode)
         print(f"Decoded groupCode for expenses: {decoded_group_code}")
 
-        # Query MongoDB for expenses with the matching groupCode
         expenses = await expense_collection.find({"groupCode": decoded_group_code}).to_list(length=None)
 
         if not expenses:
-            raise HTTPException(status_code=404, detail=f"No expenses found for group code: {decoded_group_code}")
+            return []  # Return an empty list instead of raising an exception
 
-        # Convert ObjectId to string and return processed expenses
         return [{"id": str(expense["_id"]), **{k: v for k, v in expense.items() if k != "_id"}} for expense in expenses]
 
-    except HTTPException:
-        raise
     except Exception as e:
         print(f"Error fetching expenses: {str(e)}")
         raise HTTPException(status_code=500, detail=f"An error occurred while fetching expenses: {str(e)}")
+
+# @app.get("/budget", response_model=List[Budget])
+# async def fetch_budgets(groupCode: str = Query(..., description="Group code to filter budgets")):
+#     """
+#     Fetches all budgets for the specified group code from MongoDB.
+#     """
+#     try:
+#         # Decode the group code in case it's URL-encoded
+#         decoded_group_code = unquote_plus(groupCode)
+#         print(f"Decoded groupCode: {decoded_group_code}")
+
+#         # Query MongoDB for budgets with the matching groupCode
+#         budgets = await budget_collection.find({"groupCode": decoded_group_code}).to_list(length=None)
+
+#         if not budgets:
+#             raise HTTPException(status_code=404, detail=f"No budgets found for group code: {decoded_group_code}")
+
+#         # Convert ObjectId to string and return processed budgets
+#         return [{"id": str(budget["_id"]), **{k: v for k, v in budget.items() if k != "_id"}} for budget in budgets]
+
+#     except HTTPException:
+#         raise
+#     except Exception as e:
+#         print(f"Error fetching budgets: {str(e)}")
+#         raise HTTPException(status_code=500, detail=f"An error occurred while fetching budgets: {str(e)}")
+
+
+# @app.get("/expense", response_model=List[Expense])
+# async def fetch_expenses(groupCode: str = Query(..., description="Group code to filter expenses")):
+#     """
+#     Fetches all expenses for the specified group code from MongoDB.
+#     """
+#     try:
+#         # Decode the group code in case it's URL-encoded
+#         decoded_group_code = unquote_plus(groupCode)
+#         print(f"Decoded groupCode for expenses: {decoded_group_code}")
+
+#         # Query MongoDB for expenses with the matching groupCode
+#         expenses = await expense_collection.find({"groupCode": decoded_group_code}).to_list(length=None)
+
+#         if not expenses:
+#             raise HTTPException(status_code=404, detail=f"No expenses found for group code: {decoded_group_code}")
+
+#         # Convert ObjectId to string and return processed expenses
+#         return [{"id": str(expense["_id"]), **{k: v for k, v in expense.items() if k != "_id"}} for expense in expenses]
+
+#     except HTTPException:
+#         raise
+#     except Exception as e:
+#         print(f"Error fetching expenses: {str(e)}")
+#         raise HTTPException(status_code=500, detail=f"An error occurred while fetching expenses: {str(e)}")
 # @app.get("/budget", response_model=List[Budget]) 
 # async def fetch_budgets(groupCode: str):
 #     """Fetches all budgets for the specified group code from MongoDB."""
