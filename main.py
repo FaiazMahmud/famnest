@@ -231,6 +231,7 @@ class RecentFile(BaseModel):
     last_accessed: datetime
 
 #Base Model for expense_tracking 
+'''
 class Budget(BaseModel):
     category: str
     month: datetime
@@ -243,7 +244,27 @@ class Expense(BaseModel):
     date: datetime
     amount: float
     groupCode: str
+    '''
+class Budget(BaseModel):
+    id: str | None = None  # Make id optional with None default
+    category: str
+    month: datetime
+    amount: float
+    spent: float = 0.0
+    groupCode: str
+
+    class Config:
+        # Allow population by field name for MongoDB _id
+        allow_population_by_field_name = True
+        json_encoders = {
+            ObjectId: str  # Convert ObjectId to string
+        }
     
+    class Expense(BaseModel):
+    category: str
+    date: datetime
+    amount: float
+    groupCode: str
 
 
 # # Base Model for expense tracking
@@ -935,7 +956,7 @@ async def update_event(event_id: str, event: EventCreate):
 #     return group_expenses
 
 
-'''
+
 @app.post("/budget")
 async def upload_budget(budget: Budget):
     """
@@ -1173,77 +1194,107 @@ async def rename_budget(
 #         print(f"Error fetching expenses: {e}")
 #         raise HTTPException(status_code=500, detail="An error occurred while fetching expenses.")
 
-'''
-class RenameBudgetRequest(BaseModel):
-    category: str
 
-@app.post("/budget")
-async def upload_budget(budget: Budget):
-    """
-    Uploads a new budget to MongoDB.
-    """
-    budget_dict = budget.dict(exclude={"id"})  # Exclude 'id' to let MongoDB generate an ObjectId
-    result = await budget_collection.insert_one(budget_dict)
-    if result.inserted_id:
-        return {"message": "Budget uploaded successfully.", "id": str(result.inserted_id)}
-    raise HTTPException(status_code=500, detail="Failed to upload budget.")
+# class RenameBudgetRequest(BaseModel):
+#     category: str
 
-@app.post("/expense")
-async def upload_expense(expense: Expense):
-    """
-    Uploads a new expense to MongoDB and updates the corresponding budget's 'spent' field.
-    """
-    if expense.amount <= 0:
-        raise HTTPException(status_code=400, detail="Expense amount must be greater than zero.")
+# @app.post("/budget")
+# async def upload_budget(budget: Budget):
+#     """
+#     Uploads a new budget to MongoDB.
+#     """
+#     budget_dict = budget.dict(exclude={"id"})  # Exclude 'id' to let MongoDB generate an ObjectId
+#     result = await budget_collection.insert_one(budget_dict)
+#     if result.inserted_id:
+#         return {"message": "Budget uploaded successfully.", "id": str(result.inserted_id)}
+#     raise HTTPException(status_code=500, detail="Failed to upload budget.")
 
-    expense_dict = expense.dict(exclude={"id"})  # Exclude 'id' to let MongoDB generate an ObjectId
-    result = await expense_collection.insert_one(expense_dict)
-    if result.inserted_id:
-        update_result = await budget_collection.update_one(
-            {
-                "category": expense.category,
-                "month": {
-                    "$gte": datetime(expense.date.year, expense.date.month, 1),
-                    "$lt": datetime(expense.date.year, expense.date.month + 1, 1),
-                },
-                "groupCode": expense.groupCode,
-            },
-            {"$inc": {"spent": expense.amount}},
-        )
-        if update_result.modified_count > 0:
-            return {"message": "Expense uploaded successfully and budget updated.", "id": str(result.inserted_id)}
-        return {"message": "Expense uploaded successfully, but no matching budget was updated.", "id": str(result.inserted_id)}
-    raise HTTPException(status_code=500, detail="Failed to upload expense.")
+# @app.post("/expense")
+# async def upload_expense(expense: Expense):
+#     """
+#     Uploads a new expense to MongoDB and updates the corresponding budget's 'spent' field.
+#     """
+#     if expense.amount <= 0:
+#         raise HTTPException(status_code=400, detail="Expense amount must be greater than zero.")
 
-@app.get("/budget", response_model=List[Budget])
-async def fetch_budgets(groupCode: str):
-    """
-    Fetches all budgets for the specified group code from MongoDB.
-    """
-    try:
-        decoded_group_code = unquote_plus(unquote_plus(groupCode))
-        if not decoded_group_code:
-            raise HTTPException(status_code=400, detail="Group code cannot be empty.")
+#     expense_dict = expense.dict(exclude={"id"})  # Exclude 'id' to let MongoDB generate an ObjectId
+#     result = await expense_collection.insert_one(expense_dict)
+#     if result.inserted_id:
+#         update_result = await budget_collection.update_one(
+#             {
+#                 "category": expense.category,
+#                 "month": {
+#                     "$gte": datetime(expense.date.year, expense.date.month, 1),
+#                     "$lt": datetime(expense.date.year, expense.date.month + 1, 1),
+#                 },
+#                 "groupCode": expense.groupCode,
+#             },
+#             {"$inc": {"spent": expense.amount}},
+#         )
+#         if update_result.modified_count > 0:
+#             return {"message": "Expense uploaded successfully and budget updated.", "id": str(result.inserted_id)}
+#         return {"message": "Expense uploaded successfully, but no matching budget was updated.", "id": str(result.inserted_id)}
+#     raise HTTPException(status_code=500, detail="Failed to upload expense.")
 
-        budgets = await budget_collection.find({"groupCode": decoded_group_code}).to_list(length=None)
-        if not budgets:
-            raise HTTPException(status_code=404, detail=f"No budgets found for group code: {decoded_group_code}")
 
-        processed_budgets = []
-        for budget in budgets:
-            processed_budget = {
-                "id": str(budget["_id"]),
-                **{k: v for k, v in budget.items() if k != "_id"}
-            }
-            processed_budgets.append(processed_budget)
+# @app.get("/budget", response_model=List[Budget])
+# async def fetch_budgets(groupCode: str):
+#     try:
+#         decoded_group_code = unquote_plus(unquote_plus(groupCode))
+#         if not decoded_group_code:
+#             raise HTTPException(status_code=400, detail="Group code cannot be empty.")
 
-        return processed_budgets
+#         budgets = await budget_collection.find({"groupCode": decoded_group_code}).to_list(length=None)
+#         if not budgets:
+#             raise HTTPException(status_code=404, detail=f"No budgets found for group code: {decoded_group_code}")
 
-    except HTTPException:
-        raise
-    except Exception as e:
-        print(f"Error in fetch_budgets: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"An error occurred while fetching budgets: {str(e)}")
+#         # Convert MongoDB documents to Budget models
+#         return [
+#             Budget(
+#                 id=str(budget["_id"]),
+#                 category=budget["category"],
+#                 month=budget["month"],
+#                 amount=budget["amount"],
+#                 spent=budget.get("spent", 0.0),
+#                 groupCode=budget["groupCode"]
+#             )
+#             for budget in budgets
+#         ]
+
+#     except HTTPException:
+#         raise
+#     except Exception as e:
+#         print(f"Error in fetch_budgets: {str(e)}")
+#         raise HTTPException(status_code=500, detail=f"An error occurred while fetching budgets: {str(e)}")
+# @app.get("/budget", response_model=List[Budget])
+# async def fetch_budgets(groupCode: str):
+#     """
+#     Fetches all budgets for the specified group code from MongoDB.
+#     """
+#     try:
+#         decoded_group_code = unquote_plus(unquote_plus(groupCode))
+#         if not decoded_group_code:
+#             raise HTTPException(status_code=400, detail="Group code cannot be empty.")
+
+#         budgets = await budget_collection.find({"groupCode": decoded_group_code}).to_list(length=None)
+#         if not budgets:
+#             raise HTTPException(status_code=404, detail=f"No budgets found for group code: {decoded_group_code}")
+
+#         processed_budgets = []
+#         for budget in budgets:
+#             processed_budget = {
+#                 "id": str(budget["_id"]),
+#                 **{k: v for k, v in budget.items() if k != "_id"}
+#             }
+#             processed_budgets.append(processed_budget)
+
+#         return processed_budgets
+
+#     except HTTPException:
+#         raise
+#     except Exception as e:
+#         print(f"Error in fetch_budgets: {str(e)}")
+#         raise HTTPException(status_code=500, detail=f"An error occurred while fetching budgets: {str(e)}")
 
 @app.get("/expense", response_model=List[Expense])
 async def fetch_expenses(groupCode: str):
