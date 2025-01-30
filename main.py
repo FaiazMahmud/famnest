@@ -266,21 +266,21 @@ class RecentFile(BaseModel):
 # final 
 
 class Budget(BaseModel):
-    id: str
+    id: str = uuid.uuid4().hex  # Generate a unique ID if not provided
     category: str
     month: datetime
     amount: float
     spent: float
     groupCode: str
+    traceId: str = uuid.uuid4().hex  # Generate a traceId if not provided
 
-
+# Expense model
 class Expense(BaseModel):
-    id: str 
+    id: str = uuid.uuid4().hex  # Generate a unique ID if not provided
     category: str
     date: datetime
     amount: float
     groupCode: str
-    
 # class Budget(BaseModel):
 #     id: str | None = None  # Make id optional with None default
 #     category: str
