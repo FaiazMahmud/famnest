@@ -1015,22 +1015,54 @@ async def upload_expense(expense: Expense):
 
 from urllib.parse import unquote  # Use unquote instead of unquote_plus
 
+# it works just fine
+# @app.get("/budget", response_model=List[Budget])
+# async def fetch_budgets(groupCode: str = Query(..., description="Group code to filter budgets")):
+#     try:
+#         decoded_group_code = unquote(groupCode)  # Use unquote instead of unquote_plus
+#         print(f"Decoded groupCode: {decoded_group_code}")
+
+#         budgets = await budget_collection.find({"groupCode": decoded_group_code}).to_list(length=None)
+
+#         if not budgets:
+#             return []  # Return an empty list instead of raising an exception
+
+#         return [{"id": str(budget["_id"]), **{k: v for k, v in budget.items() if k != "_id"}} for budget in budgets]
+
+#     except Exception as e:
+#         print(f"Error fetching budgets: {str(e)}")
+#         raise HTTPException(status_code=500, detail=f"An error occurred while fetching budgets: {str(e)}")
+# end part
 @app.get("/budget", response_model=List[Budget])
 async def fetch_budgets(groupCode: str = Query(..., description="Group code to filter budgets")):
     try:
-        decoded_group_code = unquote(groupCode)  # Use unquote instead of unquote_plus
+        decoded_group_code = unquote(groupCode)  # Decode group code
         print(f"Decoded groupCode: {decoded_group_code}")
 
         budgets = await budget_collection.find({"groupCode": decoded_group_code}).to_list(length=None)
 
         if not budgets:
-            return []  # Return an empty list instead of raising an exception
+            return []
 
-        return [{"id": str(budget["_id"]), **{k: v for k, v in budget.items() if k != "_id"}} for budget in budgets]
+        # Ensure `_id` is included as `id`
+        return [
+            {"id": str(budget["_id"]), **{k: v for k, v in budget.items() if k != "_id"}}
+            for budget in budgets
+        ]
 
     except Exception as e:
         print(f"Error fetching budgets: {str(e)}")
         raise HTTPException(status_code=500, detail=f"An error occurred while fetching budgets: {str(e)}")
+@app.delete("/budget/{budget_id}")
+async def delete_budget(budget_id: str):
+    """
+    Deletes a budget by its ID.
+    """
+    result = await budget_collection.delete_one({"_id": ObjectId(budget_id)})
+    if result.deleted_count == 1:
+        return {"message": "Budget deleted successfully."}
+    raise HTTPException(status_code=404, detail="Budget not found.")
+# end of conv
 
 @app.get("/expense", response_model=List[Expense])
 async def fetch_expenses(groupCode: str = Query(..., description="Group code to filter expenses")):
@@ -1048,6 +1080,8 @@ async def fetch_expenses(groupCode: str = Query(..., description="Group code to 
     except Exception as e:
         print(f"Error fetching expenses: {str(e)}")
         raise HTTPException(status_code=500, detail=f"An error occurred while fetching expenses: {str(e)}")
+
+
 
 # @app.get("/budget", response_model=List[Budget])
 # async def fetch_budgets(groupCode: str = Query(..., description="Group code to filter budgets")):
