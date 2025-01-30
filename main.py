@@ -977,23 +977,23 @@ async def update_event(event_id: str, event: EventCreate):
 @app.post("/budget")
 async def upload_budget(budget: Budget):
     """
-    Uploads a new budget to MongoDB with a provided ID.
+    Uploads a new budget to MongoDB with a provided ID and traceId.
     """
     budget_dict = budget.dict()
     result = await budget_collection.insert_one(budget_dict)
     if result.inserted_id:
-        return {"message": "Budget uploaded successfully.", "id": budget_dict["id"]}
+        return {"message": "Budget uploaded successfully.", "id": budget_dict["id"], "traceId": budget_dict["traceId"]}
     raise HTTPException(status_code=500, detail="Failed to upload budget.")
 
 @app.post("/expense")
 async def upload_expense(expense: Expense):
     """
-    Uploads a new expense to MongoDB with a provided ID.
+    Uploads a new expense to MongoDB with a provided ID and traceId.
     """
     expense_dict = expense.dict()
     result = await expense_collection.insert_one(expense_dict)
     if result.inserted_id:
-        return {"message": "Expense uploaded successfully.", "id": expense_dict["id"]}
+        return {"message": "Expense uploaded successfully.", "id": expense_dict["id"], "traceId": expense_dict["traceId"]}
     raise HTTPException(status_code=500, detail="Failed to upload expense.")
 
 @app.get("/budget", response_model=List[Budget])
@@ -1010,7 +1010,7 @@ async def fetch_budgets(groupCode: str = Query(..., description="Group code to f
         if not budgets:
             return []
 
-        # Ensure "id" is returned instead of MongoDB "_id"
+        # Ensure "id" and "traceId" are returned instead of MongoDB "_id"
         return [
             {
                 "id": budget["id"],  # Use the ID from Flutter
@@ -1019,6 +1019,7 @@ async def fetch_budgets(groupCode: str = Query(..., description="Group code to f
                 "amount": float(budget["amount"]),
                 "spent": float(budget["spent"]),
                 "groupCode": budget["groupCode"],
+                "traceId": budget["traceId"],  # Include traceId
             }
             for budget in budgets
         ]
@@ -1041,7 +1042,7 @@ async def fetch_expenses(groupCode: str = Query(..., description="Group code to 
         if not expenses:
             return []
 
-        # Ensure "id" is returned instead of MongoDB "_id"
+        # Ensure "id" and "traceId" are returned instead of MongoDB "_id"
         return [
             {
                 "id": expense["id"],  # Use the ID from Flutter
@@ -1049,6 +1050,7 @@ async def fetch_expenses(groupCode: str = Query(..., description="Group code to 
                 "date": expense["date"].isoformat() if isinstance(expense["date"], datetime) else expense["date"],
                 "amount": float(expense["amount"]),
                 "groupCode": expense["groupCode"],
+                "traceId": expense["traceId"],  # Include traceId
             }
             for expense in expenses
         ]
@@ -1056,40 +1058,40 @@ async def fetch_expenses(groupCode: str = Query(..., description="Group code to 
     except Exception as e:
         print(f"Error fetching expenses: {str(e)}")
         raise HTTPException(status_code=500, detail=f"An error occurred while fetching expenses: {str(e)}")
-        
-@app.delete("/budget/{budget_id}")
-async def delete_budget(budget_id: str):
+
+@app.delete("/budget/{trace_id}")
+async def delete_budget(trace_id: str):
     """
-    Deletes a budget using the provided ID.
+    Deletes a budget using the provided traceId.
     """
-    result = await budget_collection.delete_one({"id": budget_id})
+    result = await budget_collection.delete_one({"traceId": trace_id})
     if result.deleted_count == 1:
         return {"message": "Budget deleted successfully."}
     raise HTTPException(status_code=404, detail="Budget not found.")
-    
-    @app.put("/budget/{budget_id}")
-async def rename_budget(budget_id: str, new_category: str = Body(..., embed=True)):
+
+@app.put("/budget/{trace_id}")
+async def rename_budget(trace_id: str, new_category: str = Body(..., embed=True)):
     """
-    Renames a budget category by its ID.
+    Renames a budget category by its traceId.
     """
     result = await budget_collection.update_one(
-        {"id": budget_id},
+        {"traceId": trace_id},
         {"$set": {"category": new_category}}
     )
     if result.modified_count == 1:
         return {"message": "Budget renamed successfully."}
     raise HTTPException(status_code=404, detail="Budget not found.")
 
-
-@app.delete("/expense/{expense_id}")
-async def delete_expense(expense_id: str):
+@app.delete("/expense/{trace_id}")
+async def delete_expense(trace_id: str):
     """
-    Deletes an expense using the provided ID.
+    Deletes an expense using the provided traceId.
     """
-    result = await expense_collection.delete_one({"id": expense_id})
+    result = await expense_collection.delete_one({"traceId": trace_id})
     if result.deleted_count == 1:
         return {"message": "Expense deleted successfully."}
     raise HTTPException(status_code=404, detail="Expense not found.")
+
 
 
 
