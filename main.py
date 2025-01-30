@@ -247,7 +247,7 @@ class RecentFile(BaseModel):
 
 
 # final
-# class Budget(BaseModel):
+class Budget(BaseModel):
     id: str = None
     category: str
     month: datetime
