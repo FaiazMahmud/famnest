@@ -953,122 +953,7 @@ async def update_event(event_id: str, event: EventCreate):
 
 
 
-@app.post("/budget")
-async def upload_budget(budget: Budget):
-    """
-    Uploads a new budget to MongoDB with a provided ID.
-    """
-    budget_dict = budget.dict()
-    result = await budget_collection.insert_one(budget_dict)
-    if result.inserted_id:
-        return {"message": "Budget uploaded successfully.", "id": budget_dict["id"]}
-    raise HTTPException(status_code=500, detail="Failed to upload budget.")
 
-@app.post("/expense")
-async def upload_expense(expense: Expense):
-    """
-    Uploads a new expense to MongoDB with a provided ID.
-    """
-    expense_dict = expense.dict()
-    result = await expense_collection.insert_one(expense_dict)
-    if result.inserted_id:
-        return {"message": "Expense uploaded successfully.", "id": expense_dict["id"]}
-    raise HTTPException(status_code=500, detail="Failed to upload expense.")
-
-@app.get("/budget", response_model=List[Budget])
-async def fetch_budgets(groupCode: str = Query(..., description="Group code to filter budgets")):
-    """
-    Fetch all budgets for a given group code.
-    """
-    try:
-        decoded_group_code = unquote(groupCode)
-        print(f"Decoded groupCode: {decoded_group_code}")
-
-        budgets = await budget_collection.find({"groupCode": decoded_group_code}).to_list(length=None)
-
-        if not budgets:
-            return []
-
-        # Ensure "id" is returned instead of MongoDB "_id"
-        return [
-            {
-                "id": budget["id"],  # Use the ID from Flutter
-                "category": budget["category"],
-                "month": budget["month"].isoformat() if isinstance(budget["month"], datetime) else budget["month"],
-                "amount": float(budget["amount"]),
-                "spent": float(budget["spent"]),
-                "groupCode": budget["groupCode"],
-            }
-            for budget in budgets
-        ]
-
-    except Exception as e:
-        print(f"Error fetching budgets: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"An error occurred while fetching budgets: {str(e)}")
-
-@app.get("/expense", response_model=List[Expense])
-async def fetch_expenses(groupCode: str = Query(..., description="Group code to filter expenses")):
-    """
-    Fetch all expenses for a given group code.
-    """
-    try:
-        decoded_group_code = unquote(groupCode)
-        print(f"Decoded groupCode for expenses: {decoded_group_code}")
-
-        expenses = await expense_collection.find({"groupCode": decoded_group_code}).to_list(length=None)
-
-        if not expenses:
-            return []
-
-        # Ensure "id" is returned instead of MongoDB "_id"
-        return [
-            {
-                "id": expense["id"],  # Use the ID from Flutter
-                "category": expense["category"],
-                "date": expense["date"].isoformat() if isinstance(expense["date"], datetime) else expense["date"],
-                "amount": float(expense["amount"]),
-                "groupCode": expense["groupCode"],
-            }
-            for expense in expenses
-        ]
-
-    except Exception as e:
-        print(f"Error fetching expenses: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"An error occurred while fetching expenses: {str(e)}")
-        
-@app.delete("/budget/{budget_id}")
-async def delete_budget(budget_id: str):
-    """
-    Deletes a budget using the provided ID.
-    """
-    result = await budget_collection.delete_one({"id": budget_id})
-    if result.deleted_count == 1:
-        return {"message": "Budget deleted successfully."}
-    raise HTTPException(status_code=404, detail="Budget not found.")
-    
-    @app.put("/budget/{budget_id}")
-async def rename_budget(budget_id: str, new_category: str = Body(..., embed=True)):
-    """
-    Renames a budget category by its ID.
-    """
-    result = await budget_collection.update_one(
-        {"id": budget_id},
-        {"$set": {"category": new_category}}
-    )
-    if result.modified_count == 1:
-        return {"message": "Budget renamed successfully."}
-    raise HTTPException(status_code=404, detail="Budget not found.")
-
-
-@app.delete("/expense/{expense_id}")
-async def delete_expense(expense_id: str):
-    """
-    Deletes an expense using the provided ID.
-    """
-    result = await expense_collection.delete_one({"id": expense_id})
-    if result.deleted_count == 1:
-        return {"message": "Expense deleted successfully."}
-    raise HTTPException(status_code=404, detail="Expense not found.")
 
 
 
@@ -1089,44 +974,44 @@ async def delete_expense(expense_id: str):
 #     return group_expenses
 
 
-#this works well
-# @app.post("/budget")
-# async def upload_budget(budget: Budget):
-#     """
-#     Uploads a new budget to MongoDB.
-#     """
-#     budget_dict = budget.dict(exclude={"id"})  # Exclude 'id' to let MongoDB generate an ObjectId
-#     result = await budget_collection.insert_one(budget_dict)
-#     if result.inserted_id:
-#         # Retrieve the generated ObjectId and set it as a string in the response
-#         return {"message": "Budget uploaded successfully.", "id": str(result.inserted_id)}
-#     raise HTTPException(status_code=500, detail="Failed to upload budget.")
+
+@app.post("/budget")
+async def upload_budget(budget: Budget):
+    """
+    Uploads a new budget to MongoDB.
+    """
+    budget_dict = budget.dict(exclude={"id"})  # Exclude 'id' to let MongoDB generate an ObjectId
+    result = await budget_collection.insert_one(budget_dict)
+    if result.inserted_id:
+        # Retrieve the generated ObjectId and set it as a string in the response
+        return {"message": "Budget uploaded successfully.", "id": str(result.inserted_id)}
+    raise HTTPException(status_code=500, detail="Failed to upload budget.")
 
 
-# @app.post("/expense")
-# async def upload_expense(expense: Expense):
-#     """
-#     Uploads a new expense to MongoDB and updates the corresponding budget's 'spent' field.
-#     """
-#     expense_dict = expense.dict(exclude={"id"})  # Exclude 'id' to let MongoDB generate an ObjectId
-#     result = await expense_collection.insert_one(expense_dict)
-#     if result.inserted_id:
-#         # Update the corresponding budget's 'spent' field
-#         update_result = await budget_collection.update_one(
-#             {
-#                 "category": expense.category,
-#                 "month": {
-#                     "$gte": datetime(expense.date.year, expense.date.month, 1),
-#                     "$lt": datetime(expense.date.year, expense.date.month + 1, 1),
-#                 },
-#                 "groupCode": expense.groupCode,
-#             },
-#             {"$inc": {"spent": expense.amount}},
-#         )
-#         if update_result.modified_count > 0:
-#             return {"message": "Expense uploaded successfully and budget updated.", "id": str(result.inserted_id)}
-#         return {"message": "Expense uploaded successfully, but no matching budget was updated.", "id": str(result.inserted_id)}
-#     raise HTTPException(status_code=500, detail="Failed to upload expense.")
+@app.post("/expense")
+async def upload_expense(expense: Expense):
+    """
+    Uploads a new expense to MongoDB and updates the corresponding budget's 'spent' field.
+    """
+    expense_dict = expense.dict(exclude={"id"})  # Exclude 'id' to let MongoDB generate an ObjectId
+    result = await expense_collection.insert_one(expense_dict)
+    if result.inserted_id:
+        # Update the corresponding budget's 'spent' field
+        update_result = await budget_collection.update_one(
+            {
+                "category": expense.category,
+                "month": {
+                    "$gte": datetime(expense.date.year, expense.date.month, 1),
+                    "$lt": datetime(expense.date.year, expense.date.month + 1, 1),
+                },
+                "groupCode": expense.groupCode,
+            },
+            {"$inc": {"spent": expense.amount}},
+        )
+        if update_result.modified_count > 0:
+            return {"message": "Expense uploaded successfully and budget updated.", "id": str(result.inserted_id)}
+        return {"message": "Expense uploaded successfully, but no matching budget was updated.", "id": str(result.inserted_id)}
+    raise HTTPException(status_code=500, detail="Failed to upload expense.")
 
 #this works well
 
@@ -1134,43 +1019,42 @@ async def delete_expense(expense_id: str):
 
 from urllib.parse import unquote  # Use unquote instead of unquote_plus
 
-# it works just fine
-# @app.get("/budget", response_model=List[Budget])
-# async def fetch_budgets(groupCode: str = Query(..., description="Group code to filter budgets")):
-#     try:
-#         decoded_group_code = unquote(groupCode)  # Use unquote instead of unquote_plus
-#         print(f"Decoded groupCode: {decoded_group_code}")
+it works just fine
+@app.get("/budget", response_model=List[Budget])
+async def fetch_budgets(groupCode: str = Query(..., description="Group code to filter budgets")):
+    try:
+        decoded_group_code = unquote(groupCode)  # Use unquote instead of unquote_plus
+        print(f"Decoded groupCode: {decoded_group_code}")
 
-#         budgets = await budget_collection.find({"groupCode": decoded_group_code}).to_list(length=None)
+        budgets = await budget_collection.find({"groupCode": decoded_group_code}).to_list(length=None)
 
-#         if not budgets:
-#             return []  # Return an empty list instead of raising an exception
+        if not budgets:
+            return []  # Return an empty list instead of raising an exception
 
-#         return [{"id": str(budget["_id"]), **{k: v for k, v in budget.items() if k != "_id"}} for budget in budgets]
+        return [{"id": str(budget["_id"]), **{k: v for k, v in budget.items() if k != "_id"}} for budget in budgets]
 
-#     except Exception as e:
-#         print(f"Error fetching budgets: {str(e)}")
-#         raise HTTPException(status_code=500, detail=f"An error occurred while fetching budgets: {str(e)}")
+    except Exception as e:
+        print(f"Error fetching budgets: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"An error occurred while fetching budgets: {str(e)}")
 # end part
 
 
-# This works well
-# @app.get("/expense", response_model=List[Expense])
-# async def fetch_expenses(groupCode: str = Query(..., description="Group code to filter expenses")):
-#     try:
-#         decoded_group_code = unquote(groupCode)  # Use unquote instead of unquote_plus
-#         print(f"Decoded groupCode for expenses: {decoded_group_code}")
+@app.get("/expense", response_model=List[Expense])
+async def fetch_expenses(groupCode: str = Query(..., description="Group code to filter expenses")):
+    try:
+        decoded_group_code = unquote(groupCode)  # Use unquote instead of unquote_plus
+        print(f"Decoded groupCode for expenses: {decoded_group_code}")
 
-#         expenses = await expense_collection.find({"groupCode": decoded_group_code}).to_list(length=None)
+        expenses = await expense_collection.find({"groupCode": decoded_group_code}).to_list(length=None)
 
-#         if not expenses:
-#             return []  # Return an empty list instead of raising an exception
+        if not expenses:
+            return []  # Return an empty list instead of raising an exception
 
-#         return [{"id": str(expense["_id"]), **{k: v for k, v in expense.items() if k != "_id"}} for expense in expenses]
+        return [{"id": str(expense["_id"]), **{k: v for k, v in expense.items() if k != "_id"}} for expense in expenses]
 
-#     except Exception as e:
-#         print(f"Error fetching expenses: {str(e)}")
-#         raise HTTPException(status_code=500, detail=f"An error occurred while fetching expenses: {str(e)}")
+    except Exception as e:
+        print(f"Error fetching expenses: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"An error occurred while fetching expenses: {str(e)}")
 # This works well
 
 
