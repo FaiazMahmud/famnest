@@ -1036,7 +1036,7 @@ from urllib.parse import unquote  # Use unquote instead of unquote_plus
 @app.get("/budget", response_model=List[Budget])
 async def fetch_budgets(groupCode: str = Query(..., description="Group code to filter budgets")):
     try:
-        decoded_group_code = unquote(groupCode)  # Decode group code
+        decoded_group_code = unquote(groupCode)
         print(f"Decoded groupCode: {decoded_group_code}")
 
         budgets = await budget_collection.find({"groupCode": decoded_group_code}).to_list(length=None)
@@ -1049,9 +1049,9 @@ async def fetch_budgets(groupCode: str = Query(..., description="Group code to f
             {
                 "id": str(budget["_id"]),  # Convert ObjectId to string
                 "category": budget["category"],
-                "month": budget["month"],
-                "amount": budget["amount"],
-                "spent": budget["spent"],
+                "month": budget["month"].isoformat() if isinstance(budget["month"], datetime) else budget["month"],
+                "amount": float(budget["amount"]),  # Ensure float type
+                "spent": float(budget["spent"]),    # Ensure float type
                 "groupCode": budget["groupCode"],
             }
             for budget in budgets
@@ -1060,6 +1060,7 @@ async def fetch_budgets(groupCode: str = Query(..., description="Group code to f
     except Exception as e:
         print(f"Error fetching budgets: {str(e)}")
         raise HTTPException(status_code=500, detail=f"An error occurred while fetching budgets: {str(e)}")
+
 
 @app.delete("/budget/{budget_id}")
 async def delete_budget(budget_id: str):
