@@ -1046,13 +1046,21 @@ async def fetch_budgets(groupCode: str = Query(..., description="Group code to f
 
         # Ensure `_id` is included as `id`
         return [
-            {"id": str(budget["_id"]), **{k: v for k, v in budget.items() if k != "_id"}}
+            {
+                "id": str(budget["_id"]),  # Convert ObjectId to string
+                "category": budget["category"],
+                "month": budget["month"],
+                "amount": budget["amount"],
+                "spent": budget["spent"],
+                "groupCode": budget["groupCode"],
+            }
             for budget in budgets
         ]
 
     except Exception as e:
         print(f"Error fetching budgets: {str(e)}")
         raise HTTPException(status_code=500, detail=f"An error occurred while fetching budgets: {str(e)}")
+
 @app.delete("/budget/{budget_id}")
 async def delete_budget(budget_id: str):
     """
